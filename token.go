@@ -18,7 +18,6 @@ const (
 	Subtract // -
 	Multiply // *
 	Divide   // /
-	Modulo   // %
 
 	// Assignment
 	Assign         // =
@@ -28,14 +27,14 @@ const (
 	Decrement      // --
 
 	// Comparison
-	Equal        // ==
-	NotEqual     // !=
-	Less         // <
-	LessOrEqual  // <=
-	Greater      // >
-	GreaterEqual // >=
-	And          // &&
-	Or           // ||
+	Equal          // ==
+	NotEqual       // !=
+	Less           // <
+	LessOrEqual    // <=
+	Greater        // >
+	GreaterOrEqual // >=
+	And            // &&
+	Or             // ||
 
 	// Boolean
 	Not // !
@@ -61,6 +60,20 @@ const (
 	Return
 	For
 	While
+)
+
+var (
+	keywordMap = map[string]TokenType{
+		"var":     Var,
+		"type":    Type,
+		"anytype": AnyType,
+		"func":    Func,
+		"if":      If,
+		"else":    Else,
+		"return":  Return,
+		"for":     For,
+		"while":   While,
+	}
 )
 
 type Token interface {
@@ -99,10 +112,10 @@ func (t IntegerToken) Integer() int {
 
 type CharacterToken struct {
 	BasicToken
-	character rune
+	character byte
 }
 
-func (t CharacterToken) Character() rune {
+func (t CharacterToken) Character() byte {
 	return t.character
 }
 
