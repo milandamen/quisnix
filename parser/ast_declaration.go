@@ -14,9 +14,8 @@ type TypeDeclaration struct {
 
 type FunctionDeclaration struct {
 	nodeSource
-	Identifier   Identifier
-	FunctionType FunctionType
-	Statements   []Statement
+	Identifier         Identifier
+	FunctionDefinition *FunctionDefinition
 }
 
 func (VariableDeclaration) declNode() {}

@@ -88,34 +88,34 @@ type Token interface {
 	UFColumn() int
 }
 
-type BasicToken struct {
+type basicToken struct {
 	tokenType TokenType
 	line      int
 	column    int
 }
 
-func (t BasicToken) Type() TokenType {
+func (t basicToken) Type() TokenType {
 	return t.tokenType
 }
 
-func (t BasicToken) Line() int {
+func (t basicToken) Line() int {
 	return t.line
 }
 
-func (t BasicToken) Column() int {
+func (t basicToken) Column() int {
 	return t.column
 }
 
-func (t BasicToken) UFLine() int {
+func (t basicToken) UFLine() int {
 	return t.line + 1
 }
 
-func (t BasicToken) UFColumn() int {
+func (t basicToken) UFColumn() int {
 	return t.column + 1
 }
 
 type IntegerToken struct {
-	BasicToken
+	basicToken
 	integer int
 }
 
@@ -124,7 +124,7 @@ func (t IntegerToken) Integer() int {
 }
 
 type CharacterToken struct {
-	BasicToken
+	basicToken
 	character byte
 }
 
@@ -133,7 +133,7 @@ func (t CharacterToken) Character() byte {
 }
 
 type StringToken struct {
-	BasicToken
+	basicToken
 	string string
 }
 
@@ -142,7 +142,7 @@ func (t StringToken) String() string {
 }
 
 type IdentifierToken struct {
-	BasicToken
+	basicToken
 	identifier string
 }
 

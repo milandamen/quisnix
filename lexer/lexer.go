@@ -88,37 +88,37 @@ func (Lexer) getDoubleCharacterToken(line []byte, lineIdx, column int) Token {
 
 	if c1 == '=' {
 		if c0 == '+' {
-			return BasicToken{tokenType: AddAssign, line: lineIdx, column: column}
+			return basicToken{tokenType: AddAssign, line: lineIdx, column: column}
 		}
 		if c0 == '-' {
-			return BasicToken{tokenType: SubtractAssign, line: lineIdx, column: column}
+			return basicToken{tokenType: SubtractAssign, line: lineIdx, column: column}
 		}
 		if c0 == '=' {
-			return BasicToken{tokenType: Equal, line: lineIdx, column: column}
+			return basicToken{tokenType: Equal, line: lineIdx, column: column}
 		}
 		if c0 == '!' {
-			return BasicToken{tokenType: NotEqual, line: lineIdx, column: column}
+			return basicToken{tokenType: NotEqual, line: lineIdx, column: column}
 		}
 		if c0 == '<' {
-			return BasicToken{tokenType: LessOrEqual, line: lineIdx, column: column}
+			return basicToken{tokenType: LessOrEqual, line: lineIdx, column: column}
 		}
 		if c0 == '>' {
-			return BasicToken{tokenType: GreaterOrEqual, line: lineIdx, column: column}
+			return basicToken{tokenType: GreaterOrEqual, line: lineIdx, column: column}
 		}
 		return nil
 	}
 
 	if c0 == '+' && c1 == '+' {
-		return BasicToken{tokenType: Increment, line: lineIdx, column: column}
+		return basicToken{tokenType: Increment, line: lineIdx, column: column}
 	}
 	if c0 == '-' && c1 == '-' {
-		return BasicToken{tokenType: Decrement, line: lineIdx, column: column}
+		return basicToken{tokenType: Decrement, line: lineIdx, column: column}
 	}
 	if c0 == '&' && c1 == '&' {
-		return BasicToken{tokenType: And, line: lineIdx, column: column}
+		return basicToken{tokenType: And, line: lineIdx, column: column}
 	}
 	if c0 == '|' && c1 == '|' {
-		return BasicToken{tokenType: Or, line: lineIdx, column: column}
+		return basicToken{tokenType: Or, line: lineIdx, column: column}
 	}
 
 	return nil
@@ -128,55 +128,55 @@ func (Lexer) getSingleCharacterToken(line []byte, lineIdx, column int) Token {
 	c0 := line[column]
 
 	if c0 == '+' {
-		return BasicToken{tokenType: Add, line: lineIdx, column: column}
+		return basicToken{tokenType: Add, line: lineIdx, column: column}
 	}
 	if c0 == '-' {
-		return BasicToken{tokenType: Subtract, line: lineIdx, column: column}
+		return basicToken{tokenType: Subtract, line: lineIdx, column: column}
 	}
 	if c0 == '*' {
-		return BasicToken{tokenType: Multiply, line: lineIdx, column: column}
+		return basicToken{tokenType: Multiply, line: lineIdx, column: column}
 	}
 	if c0 == '/' {
-		return BasicToken{tokenType: Divide, line: lineIdx, column: column}
+		return basicToken{tokenType: Divide, line: lineIdx, column: column}
 	}
 	if c0 == '=' {
-		return BasicToken{tokenType: Assign, line: lineIdx, column: column}
+		return basicToken{tokenType: Assign, line: lineIdx, column: column}
 	}
 	if c0 == '<' {
-		return BasicToken{tokenType: Less, line: lineIdx, column: column}
+		return basicToken{tokenType: Less, line: lineIdx, column: column}
 	}
 	if c0 == '>' {
-		return BasicToken{tokenType: Greater, line: lineIdx, column: column}
+		return basicToken{tokenType: Greater, line: lineIdx, column: column}
 	}
 	if c0 == '!' {
-		return BasicToken{tokenType: Not, line: lineIdx, column: column}
+		return basicToken{tokenType: Not, line: lineIdx, column: column}
 	}
 	if c0 == '(' {
-		return BasicToken{tokenType: LeftParenthesis, line: lineIdx, column: column}
+		return basicToken{tokenType: LeftParenthesis, line: lineIdx, column: column}
 	}
 	if c0 == ')' {
-		return BasicToken{tokenType: RightParenthesis, line: lineIdx, column: column}
+		return basicToken{tokenType: RightParenthesis, line: lineIdx, column: column}
 	}
 	if c0 == '{' {
-		return BasicToken{tokenType: LeftBrace, line: lineIdx, column: column}
+		return basicToken{tokenType: LeftBrace, line: lineIdx, column: column}
 	}
 	if c0 == '}' {
-		return BasicToken{tokenType: RightBrace, line: lineIdx, column: column}
+		return basicToken{tokenType: RightBrace, line: lineIdx, column: column}
 	}
 	if c0 == '[' {
-		return BasicToken{tokenType: LeftBracket, line: lineIdx, column: column}
+		return basicToken{tokenType: LeftBracket, line: lineIdx, column: column}
 	}
 	if c0 == ']' {
-		return BasicToken{tokenType: RightBracket, line: lineIdx, column: column}
+		return basicToken{tokenType: RightBracket, line: lineIdx, column: column}
 	}
 	if c0 == ',' {
-		return BasicToken{tokenType: Comma, line: lineIdx, column: column}
+		return basicToken{tokenType: Comma, line: lineIdx, column: column}
 	}
 	if c0 == '.' {
-		return BasicToken{tokenType: Period, line: lineIdx, column: column}
+		return basicToken{tokenType: Period, line: lineIdx, column: column}
 	}
 	if c0 == ';' {
-		return BasicToken{tokenType: Semicolon, line: lineIdx, column: column}
+		return basicToken{tokenType: Semicolon, line: lineIdx, column: column}
 	}
 
 	return nil
@@ -203,7 +203,7 @@ func (Lexer) getLiteralToken(line []byte, lineIdx, column int) (Token, int, erro
 		}
 
 		return IntegerToken{
-			BasicToken: BasicToken{
+			basicToken: basicToken{
 				tokenType: Integer,
 				line:      lineIdx,
 				column:    column,
@@ -224,7 +224,7 @@ func (Lexer) getLiteralToken(line []byte, lineIdx, column int) (Token, int, erro
 		}
 
 		return CharacterToken{
-			BasicToken: BasicToken{
+			basicToken: basicToken{
 				tokenType: Character,
 				line:      lineIdx,
 				column:    column,
@@ -252,7 +252,7 @@ func (Lexer) getLiteralToken(line []byte, lineIdx, column int) (Token, int, erro
 
 		s := line[column+1 : untilCol-1]
 		return StringToken{
-			BasicToken: BasicToken{
+			basicToken: basicToken{
 				tokenType: String,
 				line:      lineIdx,
 				column:    column,
@@ -270,7 +270,7 @@ func (Lexer) getKeywordToken(line []byte, lineIdx, column int) (Token, int) {
 	for keyword, tokenType := range keywordMap {
 		untilCol := column + len(keyword)
 		if strings.HasPrefix(remainingLineString, keyword) && (untilCol >= lineLen || !(line[untilCol] >= 'a' && line[untilCol] <= 'z')) {
-			return BasicToken{
+			return basicToken{
 				tokenType: tokenType,
 				line:      lineIdx,
 				column:    column,
@@ -298,7 +298,7 @@ func (Lexer) getIdentifierToken(line []byte, lineIdx, column int) (Token, int) {
 	if untilCol != column {
 		s := line[column:untilCol]
 		return IdentifierToken{
-			BasicToken: BasicToken{
+			basicToken: basicToken{
 				tokenType: Identifier,
 				line:      lineIdx,
 				column:    column,

@@ -6,14 +6,17 @@ type Node interface {
 }
 
 type Declaration interface {
+	Node
 	declNode()
 }
 
 type Statement interface {
+	Node
 	stmtNode()
 }
 
 type Expression interface {
+	Node
 	exprNode()
 }
 
@@ -28,6 +31,11 @@ type Identifier struct {
 type Field struct {
 	Name string
 	Type Type
+}
+
+type FunctionDefinition struct {
+	FunctionType FunctionType
+	Statements   []Statement
 }
 
 // Internal structure to hold source code information.

@@ -92,6 +92,11 @@ type NotExpression struct {
 	Expression Expression
 }
 
+type FunctionExpression struct {
+	nodeSource
+	FunctionDefinition FunctionDefinition
+}
+
 func (IntegerLiteralExpression) exprNode()   {}
 func (CharacterLiteralExpression) exprNode() {}
 func (StringLiteralExpression) exprNode()    {}
