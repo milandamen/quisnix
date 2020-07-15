@@ -1,4 +1,4 @@
-package quisnix
+package lexer
 
 import (
 	"bufio"
@@ -10,15 +10,10 @@ import (
 )
 
 type Lexer struct {
-	tokens []Token
 }
 
-func (l Lexer) Tokens() []Token {
-	return l.tokens
-}
-
-func (l *Lexer) Parse(r io.Reader) error {
-	l.tokens = make([]Token, 0)
+func (l Lexer) Parse(r io.Reader) ([]Token, error) {
+	tokens := make([]Token, 0)
 	scanner := bufio.NewScanner(r)
 
 	lineIdx := 0
@@ -33,47 +28,51 @@ func (l *Lexer) Parse(r io.Reader) error {
 				continue
 			}
 			if t := l.getDoubleCharacterToken(line, lineIdx, column); t != nil {
-				l.tokens = append(l.tokens, t)
+				tokens = append(tokens, t)
 				column += 2
 				continue
 			}
 			if t := l.getSingleCharacterToken(line, lineIdx, column); t != nil {
-				l.tokens = append(l.tokens, t)
+				tokens = append(tokens, t)
 				column++
 				continue
 			}
 
 			t, newColumn, err := l.getLiteralToken(line, lineIdx, column)
 			if err != nil {
-				return errors.Wrapf(err, "error at line %d column %d", lineIdx+1, column+1)
+				return nil, errors.Wrapf(err, "error at line %d column %d", lineIdx+1, column+1)
 			}
 			if t != nil {
-				l.tokens = append(l.tokens, t)
+				tokens = append(tokens, t)
 				column = newColumn
 				continue
 			}
 
 			t, newColumn = l.getKeywordToken(line, lineIdx, column)
 			if t != nil {
-				l.tokens = append(l.tokens, t)
+				tokens = append(tokens, t)
 				column = newColumn
 				continue
 			}
 
 			t, newColumn = l.getIdentifierToken(line, lineIdx, column)
 			if t != nil {
-				l.tokens = append(l.tokens, t)
+				tokens = append(tokens, t)
 				column = newColumn
 				continue
 			}
 
-			return errors.Errorf("unknown token at line %d column %d", lineIdx+1, column+1)
+			return nil, errors.Errorf("unknown token at line %d column %d", lineIdx+1, column+1)
 		}
 
 		lineIdx++
 	}
 
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, errors.Wrap(err, "error scanning lines")
+	}
+
+	return tokens, nil
 }
 
 func (Lexer) isWhitespaceCharacter(char byte) bool {

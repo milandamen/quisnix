@@ -1,9 +1,9 @@
-package quisnix
+package lexer
 
 type TokenType int
 
 const (
-	None TokenType = iota
+	Unknown TokenType = iota
 
 	// Literal
 	Integer   // 12345
@@ -81,6 +81,11 @@ type Token interface {
 
 	Line() int
 	Column() int
+
+	// User friendly line number (starting at 1)
+	UFLine() int
+	// User friendly column number (starting at 1)
+	UFColumn() int
 }
 
 type BasicToken struct {
@@ -99,6 +104,14 @@ func (t BasicToken) Line() int {
 
 func (t BasicToken) Column() int {
 	return t.column
+}
+
+func (t BasicToken) UFLine() int {
+	return t.line + 1
+}
+
+func (t BasicToken) UFColumn() int {
+	return t.column + 1
 }
 
 type IntegerToken struct {
@@ -135,4 +148,91 @@ type IdentifierToken struct {
 
 func (t IdentifierToken) Identifier() string {
 	return t.identifier
+}
+
+func GetTokenTypeString(tt TokenType) string {
+	switch tt {
+	case Integer:
+		return "<integer>"
+	case Character:
+		return "<character>"
+	case String:
+		return "<string>"
+	case Identifier:
+		return "<identifier>"
+	case Add:
+		return "+"
+	case Subtract:
+		return "-"
+	case Multiply:
+		return "*"
+	case Divide:
+		return "/"
+	case Assign:
+		return "="
+	case AddAssign:
+		return "+="
+	case SubtractAssign:
+		return "-="
+	case Increment:
+		return "++"
+	case Decrement:
+		return "--"
+	case Equal:
+		return "=="
+	case NotEqual:
+		return "!="
+	case Less:
+		return "<"
+	case LessOrEqual:
+		return "<="
+	case Greater:
+		return ">"
+	case GreaterOrEqual:
+		return ">="
+	case And:
+		return "&&"
+	case Or:
+		return "||"
+	case Not:
+		return "!"
+	case LeftParenthesis:
+		return "("
+	case RightParenthesis:
+		return ")"
+	case LeftBrace:
+		return "{"
+	case RightBrace:
+		return "}"
+	case LeftBracket:
+		return "["
+	case RightBracket:
+		return "]"
+	case Comma:
+		return ","
+	case Period:
+		return "."
+	case Semicolon:
+		return ";"
+	case Var:
+		return "var"
+	case Type:
+		return "type"
+	case AnyType:
+		return "anytype"
+	case Func:
+		return "func"
+	case If:
+		return "if"
+	case Else:
+		return "else"
+	case Return:
+		return "return"
+	case For:
+		return "for"
+	case While:
+		return "while"
+	default:
+		return "<unknown>"
+	}
 }
