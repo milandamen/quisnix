@@ -15,6 +15,16 @@ type StringLiteralExpression struct {
 	Value string
 }
 
+type BooleanLiteralExpression struct {
+	nodeSource
+	Value bool
+}
+
+type IdentifierExpression struct {
+	nodeSource
+	Identifier Identifier
+}
+
 type AddExpression struct {
 	nodeSource
 	Left  Expression
@@ -100,6 +110,8 @@ type FunctionExpression struct {
 func (IntegerLiteralExpression) exprNode()   {}
 func (CharacterLiteralExpression) exprNode() {}
 func (StringLiteralExpression) exprNode()    {}
+func (BooleanLiteralExpression) exprNode()   {}
+func (IdentifierExpression) exprNode()       {}
 func (AddExpression) exprNode()              {}
 func (SubtractExpression) exprNode()         {}
 func (MultiplyExpression) exprNode()         {}

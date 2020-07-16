@@ -94,16 +94,16 @@ func (Lexer) getDoubleCharacterToken(line []byte, lineIdx, column int) Token {
 			return basicToken{tokenType: SubtractAssign, line: lineIdx, column: column}
 		}
 		if c0 == '=' {
-			return basicToken{tokenType: Equal, line: lineIdx, column: column}
+			return OperatorToken{basicToken{tokenType: Equal, line: lineIdx, column: column}}
 		}
 		if c0 == '!' {
-			return basicToken{tokenType: NotEqual, line: lineIdx, column: column}
+			return OperatorToken{basicToken{tokenType: NotEqual, line: lineIdx, column: column}}
 		}
 		if c0 == '<' {
-			return basicToken{tokenType: LessOrEqual, line: lineIdx, column: column}
+			return OperatorToken{basicToken{tokenType: LessOrEqual, line: lineIdx, column: column}}
 		}
 		if c0 == '>' {
-			return basicToken{tokenType: GreaterOrEqual, line: lineIdx, column: column}
+			return OperatorToken{basicToken{tokenType: GreaterOrEqual, line: lineIdx, column: column}}
 		}
 		return nil
 	}
@@ -115,10 +115,10 @@ func (Lexer) getDoubleCharacterToken(line []byte, lineIdx, column int) Token {
 		return basicToken{tokenType: Decrement, line: lineIdx, column: column}
 	}
 	if c0 == '&' && c1 == '&' {
-		return basicToken{tokenType: And, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: And, line: lineIdx, column: column}}
 	}
 	if c0 == '|' && c1 == '|' {
-		return basicToken{tokenType: Or, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Or, line: lineIdx, column: column}}
 	}
 
 	return nil
@@ -128,28 +128,28 @@ func (Lexer) getSingleCharacterToken(line []byte, lineIdx, column int) Token {
 	c0 := line[column]
 
 	if c0 == '+' {
-		return basicToken{tokenType: Add, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Add, line: lineIdx, column: column}}
 	}
 	if c0 == '-' {
-		return basicToken{tokenType: Subtract, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Subtract, line: lineIdx, column: column}}
 	}
 	if c0 == '*' {
-		return basicToken{tokenType: Multiply, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Multiply, line: lineIdx, column: column}}
 	}
 	if c0 == '/' {
-		return basicToken{tokenType: Divide, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Divide, line: lineIdx, column: column}}
 	}
 	if c0 == '=' {
 		return basicToken{tokenType: Assign, line: lineIdx, column: column}
 	}
 	if c0 == '<' {
-		return basicToken{tokenType: Less, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Less, line: lineIdx, column: column}}
 	}
 	if c0 == '>' {
-		return basicToken{tokenType: Greater, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Greater, line: lineIdx, column: column}}
 	}
 	if c0 == '!' {
-		return basicToken{tokenType: Not, line: lineIdx, column: column}
+		return OperatorToken{basicToken{tokenType: Not, line: lineIdx, column: column}}
 	}
 	if c0 == '(' {
 		return basicToken{tokenType: LeftParenthesis, line: lineIdx, column: column}

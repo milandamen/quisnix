@@ -60,6 +60,8 @@ const (
 	Return
 	For
 	While
+	True
+	False
 )
 
 var (
@@ -73,6 +75,8 @@ var (
 		"return":  Return,
 		"for":     For,
 		"while":   While,
+		"true":    True,
+		"false":   False,
 	}
 )
 
@@ -148,6 +152,29 @@ type IdentifierToken struct {
 
 func (t IdentifierToken) Identifier() string {
 	return t.identifier
+}
+
+type OperatorToken struct {
+	basicToken
+}
+
+// OperatorPrecedence returns the precedence that the operator token has.
+// A higher value means the operator has higher precedence over a token with a lesser value.
+func (t OperatorToken) OperatorPrecedence() int {
+	switch t.tokenType {
+	case Multiply, Divide, Not:
+		return 5
+	case Add, Subtract:
+		return 4
+	case Equal, NotEqual, Less, LessOrEqual, Greater, GreaterOrEqual:
+		return 3
+	case And:
+		return 2
+	case Or:
+		return 1
+	default:
+		return 0 // Not a valid operator.
+	}
 }
 
 func GetTokenTypeString(tt TokenType) string {
@@ -232,6 +259,10 @@ func GetTokenTypeString(tt TokenType) string {
 		return "for"
 	case While:
 		return "while"
+	case True:
+		return "true"
+	case False:
+		return "false"
 	default:
 		return "<unknown>"
 	}

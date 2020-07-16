@@ -1,8 +1,8 @@
 package parser
 
 type Node interface {
-	SourceLine() int
-	SourceColumn() int
+	UFSourceLine() int
+	UFSourceColumn() int
 }
 
 type Declaration interface {
@@ -44,10 +44,10 @@ type nodeSource struct {
 	column int
 }
 
-func (n nodeSource) SourceLine() int {
-	return n.line
+func (n nodeSource) UFSourceLine() int {
+	return n.line + 1
 }
 
-func (n nodeSource) SourceColumn() int {
-	return n.column
+func (n nodeSource) UFSourceColumn() int {
+	return n.column + 1
 }
