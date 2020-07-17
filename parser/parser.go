@@ -69,6 +69,7 @@ func (p *Parser) parseFunctionDeclaration(startToken lexer.Token) (Node, error) 
 		return nil, err
 	}
 
+	// TODO add declaration to current scope
 	return FunctionDeclaration{
 		nodeSource: makeNodeSource(startToken),
 		Identifier: Identifier{
@@ -96,6 +97,7 @@ func (p *Parser) parseFunctionDefinition() (*FunctionDefinition, error) {
 			return nil, unexpectedTokenCastError(token)
 		}
 
+		// TODO what if its a complex type?
 		returnTypes = []Type{UnknownType{Name: typeToken.Identifier()}}
 	} else if token.Type() == lexer.LeftParenthesis {
 		returnTypes, err = p.parseFunctionReturnTypes()
@@ -223,6 +225,7 @@ func (p *Parser) parseFunctionReturnTypes() ([]Type, error) {
 			return nil, unexpectedTokenCastError(token)
 		}
 
+		// TODO what if its a complex type?
 		returnTypes = append(returnTypes, UnknownType{Name: typeToken.Identifier()})
 	}
 
@@ -231,7 +234,6 @@ func (p *Parser) parseFunctionReturnTypes() ([]Type, error) {
 
 func (p *Parser) parseStatements() ([]Statement, error) {
 	statements := make([]Statement, 0)
-	// TODO when to stop parsing statements, maybe peek next token first?
 	for true {
 		token := p.getNextToken()
 		if token == nil {
@@ -239,37 +241,191 @@ func (p *Parser) parseStatements() ([]Statement, error) {
 		}
 
 		switch token.Type() {
+		// TODO implement For
+		// TODO implement Var (and add var declaration to current scope)
 		case lexer.If:
-			conditionExp, err := p.parseExpression(0)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not parse if statement condition")
-			}
-
-			lbToken := p.getNextToken()
-			if lbToken == nil {
-				return nil, unexpectedEOF()
-			}
-			if lbToken.Type() != lexer.LeftBrace {
-				return nil, unexpectedTokenError(lbToken, lexer.LeftBrace)
-			}
-
-			stmts, err := p.parseStatements()
+			stmt, err := p.parseIfStatement(token)
 			if err != nil {
 				return nil, err
 			}
 
-			statements = append(statements, IfStatement{
-				nodeSource:     makeNodeSource(token),
-				Condition:      conditionExp,
-				ThenStatements: stmts,
-				ElseStatements: make([]Statement, 0), // TODO implement
-			})
+			statements = append(statements, stmt)
+		case lexer.While:
+			stmt, err := p.parseWhileStatement(token)
+			if err != nil {
+				return nil, err
+			}
+
+			statements = append(statements, stmt)
+		case lexer.Identifier:
+			idToken, ok := token.(lexer.IdentifierToken)
+			if !ok {
+				return nil, unexpectedTokenCastError(token)
+			}
+
+			stmt, err := p.parseIdentifierStatement(idToken)
+			if err != nil {
+				return nil, err
+			}
+
+			statements = append(statements, stmt)
+		case lexer.RightBrace:
+			break
 		default:
-			return nil, unexpectedTokenError(token, lexer.Assign, lexer.AddAssign, lexer.SubtractAssign, lexer.Increment, lexer.Decrement, lexer.If, lexer.For, lexer.While)
+			return nil, unexpectedTokenError(token, lexer.Identifier, lexer.If, lexer.For, lexer.While, lexer.RightBrace)
 		}
 	}
 
 	return statements, nil
+}
+
+func (p *Parser) parseIfStatement(startToken lexer.Token) (Statement, error) {
+	conditionExp, err := p.parseExpression(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse if statement condition")
+	}
+
+	lbToken := p.getNextToken()
+	if lbToken == nil {
+		return nil, unexpectedEOF()
+	}
+	if lbToken.Type() != lexer.LeftBrace {
+		return nil, unexpectedTokenError(lbToken, lexer.LeftBrace)
+	}
+
+	stmts, err := p.parseStatements()
+	if err != nil {
+		return nil, err
+	}
+
+	elseStmts := make([]Statement, 0)
+	pToken := p.peekNextToken()
+	if pToken == nil {
+		return nil, unexpectedEOF()
+	}
+	if pToken.Type() == lexer.Else {
+		p.getNextToken()
+		lbToken = p.getNextToken()
+		if lbToken == nil {
+			return nil, unexpectedEOF()
+		}
+		if lbToken.Type() != lexer.LeftBrace {
+			return nil, unexpectedTokenError(lbToken, lexer.LeftBrace) // FIXME: Currently does not support "else if"
+		}
+
+		elseStmts, err = p.parseStatements()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return IfStatement{
+		nodeSource:     makeNodeSource(startToken),
+		Condition:      conditionExp,
+		ThenStatements: stmts,
+		ElseStatements: elseStmts,
+	}, nil
+}
+
+func (p *Parser) parseWhileStatement(startToken lexer.Token) (Statement, error) {
+	conditionExp, err := p.parseExpression(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse while statement condition")
+	}
+
+	lbToken := p.getNextToken()
+	if lbToken == nil {
+		return nil, unexpectedEOF()
+	}
+	if lbToken.Type() != lexer.LeftBrace {
+		return nil, unexpectedTokenError(lbToken, lexer.LeftBrace)
+	}
+
+	stmts, err := p.parseStatements()
+	if err != nil {
+		return nil, err
+	}
+
+	return WhileStatement{
+		nodeSource: makeNodeSource(startToken),
+		Condition:  conditionExp,
+		Statements: stmts,
+	}, nil
+}
+
+func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken) (Statement, error) {
+	token := p.getNextToken()
+	if token == nil {
+		return nil, unexpectedEOF()
+	}
+
+	var stmt Statement
+	switch token.Type() {
+	case lexer.Assign:
+		exp, err := p.parseExpression(0)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt = AssignStatement{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+			Expression: exp,
+		}
+	case lexer.AddAssign:
+		exp, err := p.parseExpression(0)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt = AddAssignStatement{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+			Expression: exp,
+		}
+	case lexer.SubtractAssign:
+		exp, err := p.parseExpression(0)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt = SubtractAssignStatement{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+			Expression: exp,
+		}
+	case lexer.Increment:
+		stmt = IncrementStatement{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+		}
+	case lexer.Decrement:
+		stmt = DecrementStatement{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+		}
+	case lexer.LeftParenthesis:
+		var err error
+		stmt, err = p.parseFunctionCallExpression(idToken, IdentifierExpression{
+			nodeSource: makeNodeSource(idToken),
+			Identifier: Identifier{idToken.Identifier()},
+		})
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, unexpectedTokenError(token, lexer.Assign, lexer.AddAssign, lexer.SubtractAssign, lexer.Increment, lexer.Decrement, lexer.LeftParenthesis)
+	}
+
+	token = p.getNextToken()
+	if token == nil {
+		return nil, unexpectedEOF()
+	}
+	if token.Type() != lexer.Semicolon {
+		return nil, unexpectedTokenError(token, lexer.Semicolon)
+	}
+
+	return stmt, nil
 }
 
 func (p *Parser) parseExpression(prevOperatorPrecedence int) (Expression, error) {
@@ -353,6 +509,16 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int) (Expression, error)
 		exp = notExp
 	}
 
+	isCallableExp := func(e Expression) bool {
+		if _, ok := e.(IdentifierExpression); ok {
+			return true
+		}
+		if _, ok := e.(FunctionCallExpression); ok {
+			return true
+		}
+		return false
+	}
+
 	for true {
 		pToken := p.peekNextToken()
 		if pToken == nil {
@@ -360,50 +526,59 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int) (Expression, error)
 		}
 
 		oToken, ok := pToken.(lexer.OperatorToken)
-		if !ok {
-			break
-		}
+		if ok {
+			p.getNextToken()
+			precedence := oToken.OperatorPrecedence()
+			if precedence <= prevOperatorPrecedence {
+				break
+			}
 
-		p.getNextToken()
-		precedence := oToken.OperatorPrecedence()
-		if precedence <= prevOperatorPrecedence {
-			break
-		}
+			exp2, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
 
-		exp2, err := p.parseExpression(precedence)
-		if err != nil {
-			return nil, err
-		}
-
-		switch oToken.Type() {
-		case lexer.Multiply:
-			exp = MultiplyExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Divide:
-			exp = DivideExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Add:
-			exp = AddExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Subtract:
-			exp = SubtractExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Equal:
-			exp = EqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.NotEqual:
-			exp = NotEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Less:
-			exp = LessExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.LessOrEqual:
-			exp = LessOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Greater:
-			exp = GreaterExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.GreaterOrEqual:
-			exp = GreaterOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.And:
-			exp = AndExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		case lexer.Or:
-			exp = OrExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
-		default:
-			return nil, unexpectedTokenError(oToken, lexer.Multiply, lexer.Divide, lexer.Add, lexer.Subtract,
-				lexer.Equal, lexer.NotEqual, lexer.Less, lexer.LessOrEqual, lexer.Greater, lexer.GreaterOrEqual,
-				lexer.And, lexer.Or)
+			switch oToken.Type() {
+			case lexer.Multiply:
+				exp = MultiplyExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Divide:
+				exp = DivideExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Add:
+				exp = AddExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Subtract:
+				exp = SubtractExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Equal:
+				exp = EqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.NotEqual:
+				exp = NotEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Less:
+				exp = LessExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.LessOrEqual:
+				exp = LessOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Greater:
+				exp = GreaterExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.GreaterOrEqual:
+				exp = GreaterOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.And:
+				exp = AndExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			case lexer.Or:
+				exp = OrExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+			default:
+				return nil, unexpectedTokenError(oToken, lexer.Multiply, lexer.Divide, lexer.Add, lexer.Subtract,
+					lexer.Equal, lexer.NotEqual, lexer.Less, lexer.LessOrEqual, lexer.Greater, lexer.GreaterOrEqual,
+					lexer.And, lexer.Or)
+			}
+		} else {
+			if pToken.Type() == lexer.LeftParenthesis && isCallableExp(exp) {
+				p.getNextToken()
+				var err error
+				exp, err = p.parseFunctionCallExpression(pToken, exp)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				break
+			}
 		}
 	}
 
@@ -422,6 +597,51 @@ func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	}
 
 	return exp, nil
+}
+
+func (p *Parser) parseFunctionCallExpression(startToken lexer.Token, callSource Expression) (*FunctionCallExpression, error) {
+	parameters := make([]Expression, 0)
+	for true {
+		token := p.getNextToken()
+		if token == nil {
+			return nil, unexpectedEOF()
+		}
+
+		if token.Type() == lexer.RightParenthesis {
+			break
+		}
+
+		if len(parameters) > 0 {
+			if token.Type() != lexer.Comma {
+				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
+			}
+
+			token = p.getNextToken()
+			if token == nil {
+				return nil, unexpectedEOF()
+			}
+			if token.Type() != lexer.Identifier {
+				return nil, unexpectedTokenError(token, lexer.Identifier)
+			}
+		} else {
+			if token.Type() != lexer.Identifier {
+				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Identifier)
+			}
+		}
+
+		exp, err := p.parseExpression(0)
+		if err != nil {
+			return nil, err
+		}
+
+		parameters = append(parameters, exp)
+	}
+
+	return &FunctionCallExpression{
+		nodeSource: makeNodeSource(startToken),
+		CallSource: callSource,
+		Parameters: parameters,
+	}, nil
 }
 
 func (p *Parser) getNextToken() lexer.Token {

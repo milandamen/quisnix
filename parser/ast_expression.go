@@ -102,9 +102,10 @@ type NotExpression struct {
 	Expression Expression
 }
 
-type FunctionExpression struct {
+type FunctionCallExpression struct {
 	nodeSource
-	FunctionDefinition FunctionDefinition
+	CallSource Expression // Expression representing a function that can be called.
+	Parameters []Expression
 }
 
 func (IntegerLiteralExpression) exprNode()   {}
@@ -125,3 +126,6 @@ func (GreaterOrEqualExpression) exprNode()   {}
 func (AndExpression) exprNode()              {}
 func (OrExpression) exprNode()               {}
 func (NotExpression) exprNode()              {}
+
+func (FunctionCallExpression) exprNode() {}
+func (FunctionCallExpression) stmtNode() {}
