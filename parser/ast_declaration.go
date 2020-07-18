@@ -2,20 +2,17 @@ package parser
 
 type VariableDeclaration struct {
 	nodeSource
-	Identifier Identifier
-	Type       Type
+	Type Type
 }
 
 type TypeDeclaration struct {
 	nodeSource
-	Identifier Identifier
-	Type       Type
+	Type Type
 }
 
 type FunctionDeclaration struct {
 	nodeSource
-	Identifier         Identifier
-	FunctionDefinition *FunctionDefinition
+	functionDefinition *FunctionDefinition
 }
 
 func (VariableDeclaration) declNode() {}

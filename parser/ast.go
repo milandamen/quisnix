@@ -24,10 +24,6 @@ type Type interface {
 	TypeName() string
 }
 
-type Identifier struct {
-	Name string
-}
-
 type Field struct {
 	Name string
 	Type Type

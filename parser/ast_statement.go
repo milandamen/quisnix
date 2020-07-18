@@ -2,30 +2,30 @@ package parser
 
 type AssignStatement struct {
 	nodeSource
-	Identifier Identifier
-	Expression Expression
+	VariableDeclaration *VariableDeclaration
+	Expression          Expression
 }
 
 type AddAssignStatement struct {
 	nodeSource
-	Identifier Identifier
-	Expression Expression
+	VariableDeclaration *VariableDeclaration
+	Expression          Expression
 }
 
 type SubtractAssignStatement struct {
 	nodeSource
-	Identifier Identifier
-	Expression Expression
+	VariableDeclaration *VariableDeclaration
+	Expression          Expression
 }
 
 type IncrementStatement struct {
 	nodeSource
-	Identifier Identifier
+	VariableDeclaration *VariableDeclaration
 }
 
 type DecrementStatement struct {
 	nodeSource
-	Identifier Identifier
+	VariableDeclaration *VariableDeclaration
 }
 
 type IfStatement struct {

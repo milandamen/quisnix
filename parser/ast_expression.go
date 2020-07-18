@@ -22,7 +22,7 @@ type BooleanLiteralExpression struct {
 
 type IdentifierExpression struct {
 	nodeSource
-	Identifier Identifier
+	IdentifierDeclaration Declaration
 }
 
 type AddExpression struct {

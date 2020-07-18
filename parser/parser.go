@@ -75,7 +75,7 @@ func (p *Parser) parseFunctionDeclaration(startToken lexer.Token) (Node, error) 
 		Identifier: Identifier{
 			Name: idToken.Identifier(),
 		},
-		FunctionDefinition: def,
+		functionDefinition: def,
 	}, nil
 }
 
