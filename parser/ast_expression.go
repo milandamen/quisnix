@@ -108,24 +108,24 @@ type FunctionCallExpression struct {
 	Parameters []Expression
 }
 
-func (IntegerLiteralExpression) exprNode()   {}
-func (CharacterLiteralExpression) exprNode() {}
-func (StringLiteralExpression) exprNode()    {}
-func (BooleanLiteralExpression) exprNode()   {}
-func (IdentifierExpression) exprNode()       {}
-func (AddExpression) exprNode()              {}
-func (SubtractExpression) exprNode()         {}
-func (MultiplyExpression) exprNode()         {}
-func (DivideExpression) exprNode()           {}
-func (EqualExpression) exprNode()            {}
-func (NotEqualExpression) exprNode()         {}
-func (LessExpression) exprNode()             {}
-func (LessOrEqualExpression) exprNode()      {}
-func (GreaterExpression) exprNode()          {}
-func (GreaterOrEqualExpression) exprNode()   {}
-func (AndExpression) exprNode()              {}
-func (OrExpression) exprNode()               {}
-func (NotExpression) exprNode()              {}
+func (*IntegerLiteralExpression) exprNode()   {}
+func (*CharacterLiteralExpression) exprNode() {}
+func (*StringLiteralExpression) exprNode()    {}
+func (*BooleanLiteralExpression) exprNode()   {}
+func (*IdentifierExpression) exprNode()       {}
+func (*AddExpression) exprNode()              {}
+func (*SubtractExpression) exprNode()         {}
+func (*MultiplyExpression) exprNode()         {}
+func (*DivideExpression) exprNode()           {}
+func (*EqualExpression) exprNode()            {}
+func (*NotEqualExpression) exprNode()         {}
+func (*LessExpression) exprNode()             {}
+func (*LessOrEqualExpression) exprNode()      {}
+func (*GreaterExpression) exprNode()          {}
+func (*GreaterOrEqualExpression) exprNode()   {}
+func (*AndExpression) exprNode()              {}
+func (*OrExpression) exprNode()               {}
+func (*NotExpression) exprNode()              {}
 
-func (FunctionCallExpression) exprNode() {}
-func (FunctionCallExpression) stmtNode() {}
+func (*FunctionCallExpression) exprNode() {}
+func (*FunctionCallExpression) stmtNode() {}

@@ -20,13 +20,14 @@ type StructType struct {
 }
 
 type FunctionType struct {
-	Parameters  []Field
-	ReturnTypes []Type
+	Parameters  []*Field
+	ReturnTypes []*Field // Only the type declaration is used.
 }
 
 // Type used when the definition of the time is currently unknown
 type UnknownType struct {
-	Name string
+	Name  string // Identifier of the type that was used.
+	Scope Scope  // Scope of the place where the type was used.
 }
 
 func (t BasicType) TypeName() string {
@@ -38,7 +39,7 @@ func (t StructType) TypeName() string {
 }
 
 func (t FunctionType) TypeName() string {
-	return "func"
+	return "func" // FIXME: output parameters and return types?
 }
 
 func (t UnknownType) TypeName() string {

@@ -2,30 +2,30 @@ package parser
 
 type AssignStatement struct {
 	nodeSource
-	VariableDeclaration *VariableDeclaration
+	VariableDeclaration Declaration
 	Expression          Expression
 }
 
 type AddAssignStatement struct {
 	nodeSource
-	VariableDeclaration *VariableDeclaration
+	VariableDeclaration Declaration
 	Expression          Expression
 }
 
 type SubtractAssignStatement struct {
 	nodeSource
-	VariableDeclaration *VariableDeclaration
+	VariableDeclaration Declaration
 	Expression          Expression
 }
 
 type IncrementStatement struct {
 	nodeSource
-	VariableDeclaration *VariableDeclaration
+	VariableDeclaration Declaration
 }
 
 type DecrementStatement struct {
 	nodeSource
-	VariableDeclaration *VariableDeclaration
+	VariableDeclaration Declaration
 }
 
 type IfStatement struct {
@@ -49,11 +49,11 @@ type WhileStatement struct {
 	Statements []Statement
 }
 
-func (AssignStatement) stmtNode()         {}
-func (AddAssignStatement) stmtNode()      {}
-func (SubtractAssignStatement) stmtNode() {}
-func (IncrementStatement) stmtNode()      {}
-func (DecrementStatement) stmtNode()      {}
-func (IfStatement) stmtNode()             {}
-func (ForStatement) stmtNode()            {}
-func (WhileStatement) stmtNode()          {}
+func (*AssignStatement) stmtNode()         {}
+func (*AddAssignStatement) stmtNode()      {}
+func (*SubtractAssignStatement) stmtNode() {}
+func (*IncrementStatement) stmtNode()      {}
+func (*DecrementStatement) stmtNode()      {}
+func (*IfStatement) stmtNode()             {}
+func (*ForStatement) stmtNode()            {}
+func (*WhileStatement) stmtNode()          {}

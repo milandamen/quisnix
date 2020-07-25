@@ -25,8 +25,8 @@ type Type interface {
 }
 
 type Field struct {
-	Name string
-	Type Type
+	Name            string
+	TypeDeclaration *TypeDeclaration
 }
 
 type FunctionDefinition struct {

@@ -62,6 +62,7 @@ const (
 	While
 	True
 	False
+	// TODO add "export"
 )
 
 var (
