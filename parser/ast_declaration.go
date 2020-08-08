@@ -21,6 +21,22 @@ type UnknownDeclaration struct {
 	Scope      Scope // Scope of the place where the identifier was used.
 }
 
+func (*VariableDeclaration) DeclarationType() string {
+	return "variable"
+}
+
+func (*TypeDeclaration) DeclarationType() string {
+	return "type"
+}
+
+func (*FunctionDeclaration) DeclarationType() string {
+	return "function"
+}
+
+func (*UnknownDeclaration) DeclarationType() string {
+	return "unknown"
+}
+
 func (*VariableDeclaration) declNode() {}
 func (*TypeDeclaration) declNode()     {}
 func (*FunctionDeclaration) declNode() {}

@@ -50,14 +50,14 @@ func (p *Parser) parseTopLevel(currentScope *FileScope) (Node, error) {
 	tokenType := token.Type()
 	switch tokenType {
 	case lexer.Func:
-		node, err := p.parseFunctionDeclaration(token, currentScope)
+		node, err := p.parseTopLevelFunctionDeclaration(token, currentScope)
 		return node, errors.Wrapf(err, "could not parse function declaration at line %d column %d", token.UFLine(), token.UFColumn())
 	default:
 		return nil, unexpectedTokenError(token, lexer.Func)
 	}
 }
 
-func (p *Parser) parseFunctionDeclaration(startToken lexer.Token, currentScope Scope) (Node, error) {
+func (p *Parser) parseTopLevelFunctionDeclaration(startToken lexer.Token, currentScope *FileScope) (Node, error) {
 	token := p.getNextToken()
 	if token == nil {
 		return nil, unexpectedEOF()
@@ -71,16 +71,25 @@ func (p *Parser) parseFunctionDeclaration(startToken lexer.Token, currentScope S
 		return nil, unexpectedTokenCastError(token)
 	}
 
+	id := idToken.Identifier()
+	ns := makeNodeSource(startToken)
+	if d := currentScope.SearchDeclaration(id); d != nil {
+		return nil, alreadyDeclaredError(d, ns)
+	}
+	if ssns, ok := currentScope.subScopeDeclarations[id]; ok {
+		return nil, alreadyDeclaredInFile(ns, ssns)
+	}
+
 	def, err := p.parseFunctionDefinition(currentScope)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO make sure this declaration does not clash with other identifiers in this scope
 	decl := FunctionDeclaration{
-		nodeSource:         makeNodeSource(startToken),
+		nodeSource:         ns,
 		functionDefinition: def,
 	}
+
 	currentScope.DeclareFunction(idToken.Identifier(), decl)
 	return decl, nil
 }
@@ -180,7 +189,15 @@ func (p *Parser) parseFunctionParameters(currentScope Scope) ([]*Field, error) {
 			return nil, unexpectedTokenCastError(token)
 		}
 
-		parameters = append(parameters, p.getTypedField(nameToken.Identifier(), typeToken.Identifier(), currentScope))
+		id := nameToken.Identifier()
+		if d := currentScope.SearchDeclaration(id); d != nil {
+			return nil, alreadyDeclaredError(d, nodeSource{
+				line:   nameToken.Line(),
+				column: nameToken.Column(),
+			})
+		}
+
+		parameters = append(parameters, p.getTypedField(id, typeToken.Identifier(), currentScope))
 	}
 
 	return parameters, nil
@@ -255,7 +272,6 @@ func (p *Parser) getTypedField(fieldName string, typeId string, currentScope Sco
 			TypeDeclaration: decl,
 		}
 	} else {
-		// TODO make sure this declaration does not clash with others in this scope (like func or variable decl)
 		decl = &TypeDeclaration{
 			nodeSource: nodeSource{},
 			Type:       UnknownType{Name: typeId, Scope: currentScope},
@@ -282,7 +298,6 @@ func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
 
 		switch token.Type() {
 		// TODO implement For
-		// TODO implement Var (and add var declaration to current scope)
 		case lexer.If:
 			stmt, err := p.parseIfStatement(token, currentScope)
 			if err != nil {
@@ -802,4 +817,23 @@ func unexpectedTokenCastError(token lexer.Token) error {
 
 func unexpectedEOF() error {
 	return errors.New("unexpected end of file")
+}
+
+func alreadyDeclaredError(d Declaration, currentNodeSource nodeSource) error {
+	t := d.DeclarationType()
+	if t == "unknown" {
+		return errors.Errorf("declaration at line %d column %d was already declared at line %d column %d",
+			currentNodeSource.UFSourceLine(), currentNodeSource.UFSourceColumn(),
+			d.UFSourceLine(), d.UFSourceColumn())
+	}
+
+	return errors.Errorf("declaration at line %d column %d was already declared as a '%s' at line %d column %d",
+		currentNodeSource.UFSourceLine(), currentNodeSource.UFSourceColumn(),
+		t, d.UFSourceLine(), d.UFSourceColumn())
+}
+
+func alreadyDeclaredInFile(currentNodeSource nodeSource, subScopeNodeSource nodeSource) error {
+	return errors.Errorf("declaration at line %d column %d was already declared in file scope at line %d column %d",
+		subScopeNodeSource.UFSourceLine(), subScopeNodeSource.UFSourceColumn(),
+		currentNodeSource.UFSourceLine(), currentNodeSource.UFSourceColumn())
 }

@@ -58,9 +58,13 @@ type FileScope struct {
 	BasicScope
 	// FIXME: Imported packages scope
 
-	// TODO note every sub-scope declaration in this file scope so that declaration
-	//  clashes can be found when a file-scope declaration is done after a sub-scope
-	//  declaration might have been done already.
+	// Note every sub-scope declaration in this file scope so that declaration
+	// clashes can be found when a file-scope declaration is done after a sub-scope
+	// declaration might have been done already.
+	//
+	// Mapped by identifier and the value is the place where the same identifier was
+	// declared in a sub-scope.
+	subScopeDeclarations map[string]nodeSource
 }
 
 func NewFileScope(parentScope Scope) *FileScope {
@@ -69,6 +73,7 @@ func NewFileScope(parentScope Scope) *FileScope {
 			parentScope: parentScope,
 			scopeType:   FileScopeType,
 		},
+		subScopeDeclarations: make(map[string]nodeSource),
 	}
 }
 
@@ -95,7 +100,7 @@ func (s *BasicScope) SearchVariableDeclaration(identifier string) *VariableDecla
 
 	for currentScope != nil {
 		if skipTillTopLevel {
-			if currentScope.ScopeType() != FileScopeType {
+			if currentScope.ScopeType() != FileScopeType && currentScope.ScopeType() != BuiltInScopeType {
 				currentScope = currentScope.GetParentScope()
 				continue
 			}
@@ -123,7 +128,7 @@ func (s *BasicScope) SearchTypeDeclaration(identifier string) *TypeDeclaration {
 
 	for currentScope != nil {
 		if skipTillTopLevel {
-			if currentScope.ScopeType() != FileScopeType {
+			if currentScope.ScopeType() != FileScopeType && currentScope.ScopeType() != BuiltInScopeType {
 				currentScope = currentScope.GetParentScope()
 				continue
 			}
@@ -151,7 +156,7 @@ func (s *BasicScope) SearchFunctionDeclaration(identifier string) *FunctionDecla
 
 	for currentScope != nil {
 		if skipTillTopLevel {
-			if currentScope.ScopeType() != FileScopeType {
+			if currentScope.ScopeType() != FileScopeType && currentScope.ScopeType() != BuiltInScopeType {
 				currentScope = currentScope.GetParentScope()
 				continue
 			}
@@ -172,16 +177,90 @@ func (s *BasicScope) SearchFunctionDeclaration(identifier string) *FunctionDecla
 	return nil
 }
 
+func (s *BasicScope) SearchDeclaration(identifier string) Declaration {
+	var decl Declaration
+	decl = s.SearchVariableDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	decl = s.SearchTypeDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	decl = s.SearchFunctionDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	return nil
+}
+
 func (s *BasicScope) DeclareVariable(identifier string, declaration VariableDeclaration) {
 	s.variableDeclarations[identifier] = &declaration
+
+	var currentScope Scope
+	currentScope = s
+	for currentScope != nil {
+		if currentScope.ScopeType() == FileScopeType {
+			fs, ok := currentScope.(*FileScope)
+			if !ok {
+				return // impossible situation as a scope of FileScopeType should always be an instance of FileScope.
+			}
+
+			if _, ok := fs.subScopeDeclarations[identifier]; !ok {
+				fs.subScopeDeclarations[identifier] = declaration.nodeSource
+			}
+			return
+		}
+
+		currentScope = currentScope.GetParentScope()
+	}
 }
 
 func (s *BasicScope) DeclareType(identifier string, declaration TypeDeclaration) {
 	s.typeDeclarations[identifier] = &declaration
+
+	var currentScope Scope
+	currentScope = s
+	for currentScope != nil {
+		if currentScope.ScopeType() == FileScopeType {
+			fs, ok := currentScope.(*FileScope)
+			if !ok {
+				return // impossible situation as a scope of FileScopeType should always be an instance of FileScope.
+			}
+
+			if _, ok := fs.subScopeDeclarations[identifier]; !ok {
+				fs.subScopeDeclarations[identifier] = declaration.nodeSource
+			}
+			return
+		}
+
+		currentScope = currentScope.GetParentScope()
+	}
 }
 
 func (s *BasicScope) DeclareFunction(identifier string, declaration FunctionDeclaration) {
 	s.functionDeclarations[identifier] = &declaration
+
+	var currentScope Scope
+	currentScope = s
+	for currentScope != nil {
+		if currentScope.ScopeType() == FileScopeType {
+			fs, ok := currentScope.(*FileScope)
+			if !ok {
+				return // impossible situation as a scope of FileScopeType should always be an instance of FileScope.
+			}
+
+			if _, ok := fs.subScopeDeclarations[identifier]; !ok {
+				fs.subScopeDeclarations[identifier] = declaration.nodeSource
+			}
+			return
+		}
+
+		currentScope = currentScope.GetParentScope()
+	}
 }
 
 func (s *BasicScope) GetVariableDeclaration(identifier string) *VariableDeclaration {
@@ -263,13 +342,14 @@ func (s *FileScope) CloneShallow() Scope {
 	}
 
 	return &FileScope{
-		BasicScope{
+		BasicScope: BasicScope{
 			variableDeclarations: varDecls,
 			typeDeclarations:     typeDecls,
 			functionDeclarations: funcDecls,
 			parentScope:          s.parentScope,
 			scopeType:            s.scopeType,
 		},
+		subScopeDeclarations: make(map[string]nodeSource),
 	}
 }
 
@@ -283,6 +363,26 @@ func (b *BuiltInScope) SearchTypeDeclaration(identifier string) *TypeDeclaration
 
 func (b *BuiltInScope) SearchFunctionDeclaration(identifier string) *FunctionDeclaration {
 	return b.GetFunctionDeclaration(identifier)
+}
+
+func (b *BuiltInScope) SearchDeclaration(identifier string) Declaration {
+	var decl Declaration
+	decl = b.SearchVariableDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	decl = b.SearchTypeDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	decl = b.SearchFunctionDeclaration(identifier)
+	if decl != nil {
+		return decl
+	}
+
+	return nil
 }
 
 func (b *BuiltInScope) DeclareVariable(identifier string, declaration VariableDeclaration) {

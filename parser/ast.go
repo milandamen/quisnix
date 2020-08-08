@@ -7,6 +7,7 @@ type Node interface {
 
 type Declaration interface {
 	Node
+	DeclarationType() string
 	declNode()
 }
 
