@@ -26,8 +26,8 @@ type Type interface {
 }
 
 type Field struct {
-	Name            string
-	TypeDeclaration *TypeDeclaration
+	Name                string
+	VariableDeclaration *VariableDeclaration // variable declaration representing this field.
 }
 
 type FunctionDefinition struct {

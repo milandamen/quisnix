@@ -1,5 +1,10 @@
 package parser
 
+type statementHavingVariableDeclaration interface {
+	getVariableDeclaration() Declaration
+	setVariableDeclaration(declaration Declaration)
+}
+
 type AssignStatement struct {
 	nodeSource
 	VariableDeclaration Declaration
@@ -49,6 +54,51 @@ type WhileStatement struct {
 	Statements []Statement
 }
 
+type ReturnStatement struct {
+	nodeSource
+	ReturnExpressions []Expression
+}
+
+func (s *AssignStatement) getVariableDeclaration() Declaration {
+	return s.VariableDeclaration
+}
+
+func (s *AssignStatement) setVariableDeclaration(declaration Declaration) {
+	s.VariableDeclaration = declaration
+}
+
+func (s *AddAssignStatement) getVariableDeclaration() Declaration {
+	return s.VariableDeclaration
+}
+
+func (s *AddAssignStatement) setVariableDeclaration(declaration Declaration) {
+	s.VariableDeclaration = declaration
+}
+
+func (s *SubtractAssignStatement) getVariableDeclaration() Declaration {
+	return s.VariableDeclaration
+}
+
+func (s *SubtractAssignStatement) setVariableDeclaration(declaration Declaration) {
+	s.VariableDeclaration = declaration
+}
+
+func (s *IncrementStatement) getVariableDeclaration() Declaration {
+	return s.VariableDeclaration
+}
+
+func (s *IncrementStatement) setVariableDeclaration(declaration Declaration) {
+	s.VariableDeclaration = declaration
+}
+
+func (s *DecrementStatement) getVariableDeclaration() Declaration {
+	return s.VariableDeclaration
+}
+
+func (s *DecrementStatement) setVariableDeclaration(declaration Declaration) {
+	s.VariableDeclaration = declaration
+}
+
 func (*AssignStatement) stmtNode()         {}
 func (*AddAssignStatement) stmtNode()      {}
 func (*SubtractAssignStatement) stmtNode() {}
@@ -57,3 +107,4 @@ func (*DecrementStatement) stmtNode()      {}
 func (*IfStatement) stmtNode()             {}
 func (*ForStatement) stmtNode()            {}
 func (*WhileStatement) stmtNode()          {}
+func (*ReturnStatement) stmtNode()         {}

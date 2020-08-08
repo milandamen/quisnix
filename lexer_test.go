@@ -10,19 +10,21 @@ import (
 )
 
 var _ = Describe("Lexer", func() {
-	It("should parse an empty string", func() {
+	It("should lex an empty string", func() {
 		l := lexer.Lexer{}
 		tokens, err := l.Parse(bytes.NewBuffer([]byte{}))
 		Expect(err).To(Succeed())
 		Expect(len(tokens)).To(Equal(0))
 	})
 
-	It("should parse a simple program", func() {
+	It("should lex a simple program", func() {
 		l := lexer.Lexer{}
+
+		// TODO change to be more in line with the actual language
 		program := `
  
 	
-func Test(asd int) int {
+func test(asd Int) Int {
 	var a = 123 + 4;
 	var b = 'b';
 	var cc = "abc";
@@ -39,14 +41,14 @@ func Test(asd int) int {
 		Expect(tokens[0].Type()).To(Equal(lexer.Func))
 		Expect(tokens[0].Line()).To(Equal(3))
 		Expect(tokens[0].Column()).To(Equal(0))
-		expectIdentifierToken(tokens[1], "Test")
+		expectIdentifierToken(tokens[1], "test")
 		Expect(tokens[1].Line()).To(Equal(3))
 		Expect(tokens[1].Column()).To(Equal(5))
 		Expect(tokens[2].Type()).To(Equal(lexer.LeftParenthesis))
 		expectIdentifierToken(tokens[3], "asd")
-		expectIdentifierToken(tokens[4], "int")
+		expectIdentifierToken(tokens[4], "Int")
 		Expect(tokens[5].Type()).To(Equal(lexer.RightParenthesis))
-		expectIdentifierToken(tokens[6], "int")
+		expectIdentifierToken(tokens[6], "Int")
 		Expect(tokens[7].Type()).To(Equal(lexer.LeftBrace))
 
 		Expect(tokens[8].Type()).To(Equal(lexer.Var))

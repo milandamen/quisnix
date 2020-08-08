@@ -3,7 +3,7 @@ package parser
 type BasicDataType int
 
 const (
-	NoneDataType = iota
+	NoneDataType BasicDataType = iota
 	IntDataType
 	ByteDataType
 	StringDataType
@@ -26,8 +26,9 @@ type FunctionType struct {
 
 // Type used when the definition of the time is currently unknown
 type UnknownType struct {
-	Name  string // Identifier of the type that was used.
-	Scope Scope  // Scope of the place where the type was used.
+	Name       string     // Identifier of the type that was used.
+	Scope      Scope      // Scope of the place where the type was used.
+	nodeSource nodeSource // Place where this identifier was used.
 }
 
 func (t BasicType) TypeName() string {
