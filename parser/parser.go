@@ -97,7 +97,10 @@ func (p *Parser) parseTopLevelFunctionDeclaration(startToken lexer.Token, curren
 }
 
 func (p *Parser) parseFunctionDefinition(currentScope Scope) (*FunctionDefinition, error) {
-	parameters, err := p.parseFunctionParameters(currentScope)
+	var funcScope Scope = NewBasicScope(currentScope, FunctionScopeType)
+	var parameters []*Field
+	var err error
+	parameters, funcScope, err = p.parseFunctionParameters(funcScope)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse function parameters")
 	}
@@ -107,7 +110,8 @@ func (p *Parser) parseFunctionDefinition(currentScope Scope) (*FunctionDefinitio
 		return nil, unexpectedEOF()
 	}
 
-	returnTypes, err := p.parseFunctionReturnTypes(currentScope)
+	var returnTypes []*Field
+	returnTypes, funcScope, err = p.parseFunctionReturnTypes(funcScope)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse function return types")
 	}
@@ -120,8 +124,7 @@ func (p *Parser) parseFunctionDefinition(currentScope Scope) (*FunctionDefinitio
 		return nil, unexpectedTokenError(token, lexer.LeftBrace)
 	}
 
-	stmtsScope := NewBasicScope(currentScope, FunctionScopeType)
-	statements, err := p.parseStatements(stmtsScope)
+	statements, err := p.parseStatements(funcScope)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse function statements")
 	}
@@ -135,20 +138,20 @@ func (p *Parser) parseFunctionDefinition(currentScope Scope) (*FunctionDefinitio
 	}, nil
 }
 
-func (p *Parser) parseFunctionParameters(currentScope Scope) ([]*Field, error) {
+func (p *Parser) parseFunctionParameters(currentScope Scope) ([]*Field, Scope, error) {
 	token := p.getNextToken()
 	if token == nil {
-		return nil, unexpectedEOF()
+		return nil, currentScope, unexpectedEOF()
 	}
 	if token.Type() != lexer.LeftParenthesis {
-		return nil, unexpectedTokenError(token, lexer.LeftParenthesis)
+		return nil, currentScope, unexpectedTokenError(token, lexer.LeftParenthesis)
 	}
 
 	parameters := make([]*Field, 0)
 	for true {
 		token = p.getNextToken()
 		if token == nil {
-			return nil, unexpectedEOF()
+			return nil, currentScope, unexpectedEOF()
 		}
 
 		if token.Type() == lexer.RightParenthesis {
@@ -157,30 +160,30 @@ func (p *Parser) parseFunctionParameters(currentScope Scope) ([]*Field, error) {
 
 		if len(parameters) > 0 {
 			if token.Type() != lexer.Comma {
-				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
+				return nil, currentScope, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
 			}
 
 			token = p.getNextToken()
 			if token == nil {
-				return nil, unexpectedEOF()
+				return nil, currentScope, unexpectedEOF()
 			}
 			if token.Type() != lexer.Identifier {
-				return nil, unexpectedTokenError(token, lexer.Identifier)
+				return nil, currentScope, unexpectedTokenError(token, lexer.Identifier)
 			}
 		} else {
 			if token.Type() != lexer.Identifier {
-				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Identifier)
+				return nil, currentScope, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Identifier)
 			}
 		}
 
 		nameToken, ok := token.(lexer.IdentifierToken)
 		if !ok {
-			return nil, unexpectedTokenCastError(token)
+			return nil, currentScope, unexpectedTokenCastError(token)
 		}
 
 		id := nameToken.Identifier()
 		if d := currentScope.SearchDeclaration(id); d != nil {
-			return nil, alreadyDeclaredError(d, nodeSource{
+			return nil, currentScope, alreadyDeclaredError(d, nodeSource{
 				line:   nameToken.Line(),
 				column: nameToken.Column(),
 			})
@@ -188,27 +191,34 @@ func (p *Parser) parseFunctionParameters(currentScope Scope) ([]*Field, error) {
 
 		token = p.getNextToken()
 		if token == nil {
-			return nil, unexpectedEOF()
+			return nil, currentScope, unexpectedEOF()
 		}
 		if token.Type() != lexer.Identifier {
-			return nil, unexpectedTokenError(token, lexer.Identifier)
+			return nil, currentScope, unexpectedTokenError(token, lexer.Identifier)
 		}
 
 		typeToken, ok := token.(lexer.IdentifierToken)
 		if !ok {
-			return nil, unexpectedTokenCastError(token)
+			return nil, currentScope, unexpectedTokenCastError(token)
 		}
 
-		parameters = append(parameters, p.getTypedField(id, typeToken, currentScope))
+		var f *Field
+		var err error
+		f, currentScope, err = p.getTypedField(id, typeToken, makeNodeSource(nameToken), currentScope)
+		if err != nil {
+			return nil, currentScope, err
+		}
+
+		parameters = append(parameters, f)
 	}
 
-	return parameters, nil
+	return parameters, currentScope, nil
 }
 
-func (p *Parser) parseFunctionReturnTypes(currentScope Scope) ([]*Field, error) {
+func (p *Parser) parseFunctionReturnTypes(currentScope Scope) ([]*Field, Scope, error) {
 	token := p.peekNextToken()
 	if token == nil {
-		return nil, unexpectedEOF()
+		return nil, currentScope, unexpectedEOF()
 	}
 
 	returnTypes := make([]*Field, 0)
@@ -216,22 +226,27 @@ func (p *Parser) parseFunctionReturnTypes(currentScope Scope) ([]*Field, error) 
 		p.getNextToken()
 		typeToken, ok := token.(lexer.IdentifierToken)
 		if !ok {
-			return nil, unexpectedTokenCastError(token)
+			return nil, currentScope, unexpectedTokenCastError(token)
 		}
 
-		return []*Field{
-			p.getTypedField("", typeToken, currentScope),
-		}, nil
+		var f *Field
+		var err error
+		f, currentScope, err = p.getTypedField("", typeToken, makeNodeSource(typeToken), currentScope)
+		if err != nil {
+			return nil, currentScope, err
+		}
+
+		return []*Field{f}, currentScope, nil
 	} else if token.Type() == lexer.LeftParenthesis {
 		p.getNextToken()
 	} else {
-		return make([]*Field, 0), nil
+		return make([]*Field, 0), currentScope, nil
 	}
 
 	for true {
 		token := p.getNextToken()
 		if token == nil {
-			return nil, unexpectedEOF()
+			return nil, currentScope, unexpectedEOF()
 		}
 
 		if len(returnTypes) > 0 {
@@ -240,61 +255,79 @@ func (p *Parser) parseFunctionReturnTypes(currentScope Scope) ([]*Field, error) 
 			}
 
 			if token.Type() != lexer.Comma {
-				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
+				return nil, currentScope, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
 			}
 
 			token = p.getNextToken()
 			if token == nil {
-				return nil, unexpectedEOF()
+				return nil, currentScope, unexpectedEOF()
 			}
 		}
 
 		if token.Type() != lexer.Identifier {
-			return nil, unexpectedTokenError(token, lexer.Identifier)
+			return nil, currentScope, unexpectedTokenError(token, lexer.Identifier)
 		}
 
 		typeToken, ok := token.(lexer.IdentifierToken)
 		if !ok {
-			return nil, unexpectedTokenCastError(token)
+			return nil, currentScope, unexpectedTokenCastError(token)
 		}
 
-		returnTypes = append(returnTypes, p.getTypedField("", typeToken, currentScope))
+		var f *Field
+		var err error
+		f, currentScope, err = p.getTypedField("", typeToken, makeNodeSource(typeToken), currentScope)
+		if err != nil {
+			return nil, currentScope, err
+		}
+
+		returnTypes = append(returnTypes, f)
 	}
 
-	return returnTypes, nil
+	return returnTypes, currentScope, nil
 }
 
-func (p *Parser) getTypedField(fieldName string, typeToken lexer.IdentifierToken, currentScope Scope) (*Field, Scope) {
-	var decl *VariableDeclaration
-	if fieldName == "" || currentScope.SearchDeclaration(fieldName) == nil {
-		// TODO what if variable gets added in file scope later?
-		// TODO what if type is not yet known?
-	}
-
+func (p *Parser) getTypedField(fieldName string, typeToken lexer.IdentifierToken, ns nodeSource, currentScope Scope) (*Field, Scope, error) {
 	// TODO what if its a complex type?
 	var f *Field
 	typeId := typeToken.Identifier()
-	decl := currentScope.SearchTypeDeclaration(typeId)
-	if decl != nil {
+	typeDecl := currentScope.SearchTypeDeclaration(typeId)
+
+	varDecl := &VariableDeclaration{
+		nodeSource:      ns,
+		TypeDeclaration: typeDecl,
+	}
+
+	if typeDecl != nil {
 		f = &Field{
-			Name:            fieldName,
-			TypeDeclaration: decl,
+			Name:                fieldName,
+			VariableDeclaration: varDecl,
 		}
 	} else {
-		decl = &TypeDeclaration{
+		typeDecl = &TypeDeclaration{
 			nodeSource: nodeSource{},
 			Type:       UnknownType{Name: typeId, Scope: currentScope, nodeSource: makeNodeSource(typeToken)},
 		}
 
+		varDecl.TypeDeclaration = typeDecl
+
 		f = &Field{
-			Name:            fieldName,
-			TypeDeclaration: decl,
+			Name:                fieldName,
+			VariableDeclaration: varDecl,
 		}
 
 		p.unknownFieldTypes = append(p.unknownFieldTypes, f)
 	}
 
-	return f
+	if fieldName != "" {
+		if d := currentScope.SearchDeclaration(fieldName); d != nil {
+			return nil, currentScope, alreadyDeclaredError(d, ns)
+		}
+
+		currentScope = currentScope.CloneShallow()
+		currentScope.DeclareVariable(fieldName, varDecl)
+	}
+
+	return f, currentScope, nil
 }
 
 func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
@@ -307,7 +340,6 @@ func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
 
 		switch token.Type() {
 		// TODO implement For
-		// TODO implement Return
 		case lexer.If:
 			stmt, err := p.parseIfStatement(token, currentScope)
 			if err != nil {
@@ -362,7 +394,7 @@ func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
 		case lexer.RightBrace:
 			break
 		default:
-			return nil, unexpectedTokenError(token, lexer.Identifier, lexer.If, lexer.For, lexer.While, lexer.Var, lexer.RightBrace)
+			return nil, unexpectedTokenError(token, lexer.Identifier, lexer.If, lexer.For, lexer.While, lexer.Var, lexer.Return, lexer.RightBrace)
 		}
 	}
 
@@ -520,11 +552,13 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 	}
 
 	id := idToken.Identifier()
-	var decl Declaration
+	var varDecl Declaration
 	var addUnknownIdentifierStmt bool
-	if d := currentScope.SearchVariableDeclaration(id); d == nil {
+	if d := currentScope.SearchVariableDeclaration(id); d != nil {
+		varDecl = d
+	} else {
 		addUnknownIdentifierStmt = true
-		decl = &UnknownDeclaration{
+		varDecl = &UnknownDeclaration{
 			nodeSource: makeNodeSource(idToken),
 			Identifier: id,
 			Scope:      currentScope,
@@ -541,7 +575,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 
 		stmt = &AssignStatement{
 			nodeSource:          makeNodeSource(idToken),
-			VariableDeclaration: decl,
+			VariableDeclaration: varDecl,
 			Expression:          exp,
 		}
 	case lexer.AddAssign:
@@ -552,7 +586,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 
 		stmt = &AddAssignStatement{
 			nodeSource:          makeNodeSource(idToken),
-			VariableDeclaration: decl,
+			VariableDeclaration: varDecl,
 			Expression:          exp,
 		}
 	case lexer.SubtractAssign:
@@ -563,18 +597,18 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 
 		stmt = &SubtractAssignStatement{
 			nodeSource:          makeNodeSource(idToken),
-			VariableDeclaration: decl,
+			VariableDeclaration: varDecl,
 			Expression:          exp,
 		}
 	case lexer.Increment:
 		stmt = &IncrementStatement{
 			nodeSource:          makeNodeSource(idToken),
-			VariableDeclaration: decl,
+			VariableDeclaration: varDecl,
 		}
 	case lexer.Decrement:
 		stmt = &DecrementStatement{
 			nodeSource:          makeNodeSource(idToken),
-			VariableDeclaration: decl,
+			VariableDeclaration: varDecl,
 		}
 	case lexer.LeftParenthesis:
 		var addUnknownIdentifierExp bool
@@ -582,7 +616,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 			addUnknownIdentifierStmt = false
 			funcDecl := currentScope.SearchFunctionDeclaration(id)
 			if funcDecl != nil {
-				decl = funcDecl
+				varDecl = funcDecl
 			} else {
 				addUnknownIdentifierExp = true
 			}
@@ -590,7 +624,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 
 		exp := &IdentifierExpression{
 			nodeSource:            makeNodeSource(idToken),
-			IdentifierDeclaration: decl,
+			IdentifierDeclaration: varDecl,
 		}
 
 		if addUnknownIdentifierExp {
@@ -914,12 +948,12 @@ func (p *Parser) peekNextToken() lexer.Token {
 
 func (p *Parser) resolveUnknownTypes() error {
 	for _, f := range p.unknownFieldTypes {
-		t := f.TypeDeclaration.Type
+		t := f.VariableDeclaration.TypeDeclaration.Type
 		if ut, ok := t.(UnknownType); ok {
 			typeId := ut.Name
 			decl := ut.Scope.SearchTypeDeclaration(typeId)
 			if decl != nil {
-				f.TypeDeclaration = decl
+				f.VariableDeclaration.TypeDeclaration = decl
 			} else {
 				return errors.Errorf("no type found for identifier '%s' at line %d column %d",
 					typeId, ut.nodeSource.UFSourceLine(), ut.nodeSource.UFSourceColumn())

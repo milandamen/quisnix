@@ -2,7 +2,6 @@ package quisnix
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/milandamen/quisnix/lexer"
 	"github.com/milandamen/quisnix/parser"
@@ -16,7 +15,7 @@ var _ = Describe("Parser", func() {
 		_, err := p.Parse([]lexer.Token{})
 		Expect(err).To(Succeed())
 	})
-	PIt("should parse a simple program", func() {
+	It("should parse a simple program", func() {
 		l := lexer.Lexer{}
 		p := parser.Parser{}
 
@@ -28,7 +27,7 @@ func test(asd Int) Int {
 	a = 123 + 4;
 	b = 'b';
 	cc = "abc";
-	a -= 2;
+	a -= 2 + 3 * 4;
 	a++;
 	a = a + asd;
 	return a;
@@ -36,7 +35,7 @@ func test(asd Int) Int {
 `
 		tokens, err := l.Parse(bytes.NewBufferString(program))
 		Expect(err).To(Succeed())
-		Expect(len(tokens)).To(Equal(51))
+		Expect(len(tokens)).To(Equal(55))
 
 		declarations, err := p.Parse(tokens)
 		Expect(err).To(Succeed())
@@ -51,11 +50,14 @@ func test(asd Int) Int {
 		Expect(len(testFuncType.ReturnTypes)).To(Equal(1))
 
 		Expect(testFuncType.Parameters[0].Name).To(Equal("asd"))
-		typeDeclaration := testFuncType.Parameters[0].TypeDeclaration
+		varASDDecl := testFuncType.Parameters[0].VariableDeclaration
+		Expect(varASDDecl.UFSourceLine()).To(Equal(2))
+		Expect(varASDDecl.UFSourceColumn()).To(Equal(11))
+		typeDeclaration := varASDDecl.TypeDeclaration
 		expectTypeDeclaration(typeDeclaration, "Int", parser.IntDataType)
 
 		Expect(testFuncType.ReturnTypes[0].Name).To(Equal(""))
-		typeDeclaration = testFuncType.ReturnTypes[0].TypeDeclaration
+		typeDeclaration = testFuncType.ReturnTypes[0].VariableDeclaration.TypeDeclaration
 		expectTypeDeclaration(typeDeclaration, "Int", parser.IntDataType)
 
 		Expect(len(testFuncDef.Statements)).To(Equal(10))
@@ -63,6 +65,8 @@ func test(asd Int) Int {
 		Expect(stmt.UFSourceLine()).To(Equal(3))
 		Expect(stmt.UFSourceColumn()).To(Equal(2))
 		varADecl := stmt.(*parser.VariableDeclaration)
+		Expect(varADecl.UFSourceLine()).To(Equal(3))
+		Expect(varADecl.UFSourceColumn()).To(Equal(2))
 		Expect(varADecl.DeclarationType()).To(Equal("variable"))
 		expectTypeDeclaration(varADecl.TypeDeclaration, "Int", parser.IntDataType)
 
@@ -78,6 +82,8 @@ func test(asd Int) Int {
 
 		stmt = testFuncDef.Statements[3]
 		assignStmt := stmt.(*parser.AssignStatement)
+		Expect(assignStmt.UFSourceLine()).To(Equal(6))
+		Expect(assignStmt.UFSourceColumn()).To(Equal(2))
 		Expect(assignStmt.VariableDeclaration).To(Equal(varADecl))
 		addExp := assignStmt.Expression.(*parser.AddExpression)
 		expectIntLiteralExpression(addExp.Left, 123)
@@ -96,7 +102,11 @@ func test(asd Int) Int {
 		stmt = testFuncDef.Statements[6]
 		subAssignStmt := stmt.(*parser.SubtractAssignStatement)
 		Expect(subAssignStmt.VariableDeclaration).To(Equal(varADecl))
-		expectIntLiteralExpression(subAssignStmt.Expression, 2)
+		addExp = subAssignStmt.Expression.(*parser.AddExpression)
+		mulExp := addExp.Right.(*parser.MultiplyExpression)
+		expectIntLiteralExpression(addExp.Left, 2)
+		expectIntLiteralExpression(mulExp.Left, 3)
+		expectIntLiteralExpression(mulExp.Right, 4)
 
 		stmt = testFuncDef.Statements[7]
 		incStmt := stmt.(*parser.IncrementStatement)
@@ -107,7 +117,7 @@ func test(asd Int) Int {
 		Expect(assignStmt.VariableDeclaration).To(Equal(varADecl))
 		addExp = assignStmt.Expression.(*parser.AddExpression)
 		expectIdentifierExpression(addExp.Left, varADecl)
-		expectIdentifierExpression(addExp.Right, nil)
+		expectIdentifierExpression(addExp.Right, varASDDecl)
 	})
 })
 
@@ -142,6 +152,5 @@ func expectStringLiteralExpression(expression parser.Expression, value string) {
 
 func expectIdentifierExpression(expression parser.Expression, declaration parser.Declaration) {
 	exp := expression.(*parser.IdentifierExpression)
-	fmt.Printf("%+v\n", exp)
 	Expect(exp.IdentifierDeclaration).To(Equal(declaration))
 }
