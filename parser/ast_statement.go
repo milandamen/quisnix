@@ -1,8 +1,8 @@
 package parser
 
-type statementHavingVariableDeclaration interface {
-	getVariableDeclaration() Declaration
-	setVariableDeclaration(declaration Declaration)
+type StatementHavingVariableDeclaration interface {
+	GetVariableDeclaration() Declaration
+	SetVariableDeclaration(declaration Declaration)
 }
 
 type AssignStatement struct {
@@ -59,43 +59,43 @@ type ReturnStatement struct {
 	ReturnExpressions []Expression
 }
 
-func (s *AssignStatement) getVariableDeclaration() Declaration {
+func (s *AssignStatement) GetVariableDeclaration() Declaration {
 	return s.VariableDeclaration
 }
 
-func (s *AssignStatement) setVariableDeclaration(declaration Declaration) {
+func (s *AssignStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
 }
 
-func (s *AddAssignStatement) getVariableDeclaration() Declaration {
+func (s *AddAssignStatement) GetVariableDeclaration() Declaration {
 	return s.VariableDeclaration
 }
 
-func (s *AddAssignStatement) setVariableDeclaration(declaration Declaration) {
+func (s *AddAssignStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
 }
 
-func (s *SubtractAssignStatement) getVariableDeclaration() Declaration {
+func (s *SubtractAssignStatement) GetVariableDeclaration() Declaration {
 	return s.VariableDeclaration
 }
 
-func (s *SubtractAssignStatement) setVariableDeclaration(declaration Declaration) {
+func (s *SubtractAssignStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
 }
 
-func (s *IncrementStatement) getVariableDeclaration() Declaration {
+func (s *IncrementStatement) GetVariableDeclaration() Declaration {
 	return s.VariableDeclaration
 }
 
-func (s *IncrementStatement) setVariableDeclaration(declaration Declaration) {
+func (s *IncrementStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
 }
 
-func (s *DecrementStatement) getVariableDeclaration() Declaration {
+func (s *DecrementStatement) GetVariableDeclaration() Declaration {
 	return s.VariableDeclaration
 }
 
-func (s *DecrementStatement) setVariableDeclaration(declaration Declaration) {
+func (s *DecrementStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
 }
 

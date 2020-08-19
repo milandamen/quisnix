@@ -601,6 +601,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 			Expression:          exp,
 		}
 	case lexer.Increment:
+		// TODO check that varDecl has type Int
 		stmt = &IncrementStatement{
 			nodeSource:          makeNodeSource(idToken),
 			VariableDeclaration: varDecl,
@@ -622,10 +623,7 @@ func (p *Parser) parseIdentifierStatement(idToken lexer.IdentifierToken, current
 			}
 		}
 
-		exp := &IdentifierExpression{
-			nodeSource:            makeNodeSource(idToken),
-			IdentifierDeclaration: varDecl,
-		}
+		exp := newIdentifierExpression(makeNodeSource(idToken), varDecl)
 
 		if addUnknownIdentifierExp {
 			p.unknownVarFuncIdentifiers = append(p.unknownVarFuncIdentifiers, exp)
@@ -696,11 +694,9 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 	}
 
 	var notExp *NotExpression
+	ns := makeNodeSource(token)
 	if token.Type() == lexer.Not {
-		notExp = &NotExpression{
-			nodeSource: makeNodeSource(token),
-			Expression: nil,
-		}
+		notExp = newNotExpression(ns, nil, currentScope)
 	}
 
 	var exp Expression
@@ -711,40 +707,25 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 			return nil, unexpectedTokenCastError(token)
 		}
 
-		exp = &IntegerLiteralExpression{
-			nodeSource: makeNodeSource(token),
-			Value:      intToken.Integer(),
-		}
+		exp = newIntegerLiteralExpression(ns, intToken.Integer(), currentScope)
 	case lexer.Character:
 		charToken, ok := token.(lexer.CharacterToken)
 		if !ok {
 			return nil, unexpectedTokenCastError(token)
 		}
 
-		exp = &CharacterLiteralExpression{
-			nodeSource: makeNodeSource(token),
-			Value:      charToken.Character(),
-		}
+		exp = newCharacterLiteralExpression(ns, charToken.Character(), currentScope)
 	case lexer.String:
 		stringToken, ok := token.(lexer.StringToken)
 		if !ok {
 			return nil, unexpectedTokenCastError(token)
 		}
 
-		exp = &StringLiteralExpression{
-			nodeSource: makeNodeSource(token),
-			Value:      stringToken.String(),
-		}
+		exp = newStringLiteralExpression(ns, stringToken.String(), currentScope)
 	case lexer.True:
-		exp = &BooleanLiteralExpression{
-			nodeSource: makeNodeSource(token),
-			Value:      true,
-		}
+		exp = newBooleanLiteralExpression(ns, true, currentScope)
 	case lexer.False:
-		exp = &BooleanLiteralExpression{
-			nodeSource: makeNodeSource(token),
-			Value:      false,
-		}
+		exp = newBooleanLiteralExpression(ns, false, currentScope)
 	case lexer.Identifier:
 		idToken, ok := token.(lexer.IdentifierToken)
 		if !ok {
@@ -760,10 +741,8 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 					Identifier: id,
 					Scope:      currentScope,
 				}
-				idExp := &IdentifierExpression{
-					nodeSource:            makeNodeSource(token),
-					IdentifierDeclaration: decl,
-				}
+				idExp := newIdentifierExpression(ns, decl)
+
 				p.unknownVarFuncIdentifiers = append(p.unknownVarFuncIdentifiers, idExp)
 				exp = idExp
 				break
@@ -774,10 +753,7 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 			decl = d
 		}
 
-		exp = &IdentifierExpression{
-			nodeSource:            makeNodeSource(token),
-			IdentifierDeclaration: decl,
-		}
+		exp = newIdentifierExpression(ns, decl)
 	case lexer.LeftParenthesis:
 		var err error
 		exp, err = p.parseParenthesizedExpression(currentScope)
@@ -797,9 +773,10 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 		if _, ok := e.(*IdentifierExpression); ok {
 			return true
 		}
-		if _, ok := e.(*FunctionCallExpression); ok {
-			return true
-		}
+		// TODO implement function-as-first-citizen calling.
+		//if _, ok := e.(*FunctionCallExpression); ok {
+		//	return true
+		//}
 		return false
 	}
 
@@ -822,31 +799,32 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 				return nil, err
 			}
 
+			source := makeNodeSource(oToken)
 			switch oToken.Type() {
 			case lexer.Multiply:
-				exp = &MultiplyExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newMultiplyExpression(source, exp, exp2)
 			case lexer.Divide:
-				exp = &DivideExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newDivideExpression(source, exp, exp2)
 			case lexer.Add:
-				exp = &AddExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newAddExpression(source, exp, exp2)
 			case lexer.Subtract:
-				exp = &SubtractExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newSubtractExpression(source, exp, exp2)
 			case lexer.Equal:
-				exp = &EqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newEqualExpression(source, exp, exp2, currentScope)
 			case lexer.NotEqual:
-				exp = &NotEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newNotEqualExpression(source, exp, exp2, currentScope)
 			case lexer.Less:
-				exp = &LessExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newLessExpression(source, exp, exp2, currentScope)
 			case lexer.LessOrEqual:
-				exp = &LessOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newLessOrEqualExpression(source, exp, exp2, currentScope)
 			case lexer.Greater:
-				exp = &GreaterExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newGreaterExpression(source, exp, exp2, currentScope)
 			case lexer.GreaterOrEqual:
-				exp = &GreaterOrEqualExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newGreaterOrEqualExpression(source, exp, exp2, currentScope)
 			case lexer.And:
-				exp = &AndExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newAndExpression(source, exp, exp2, currentScope)
 			case lexer.Or:
-				exp = &OrExpression{nodeSource: makeNodeSource(oToken), Left: exp, Right: exp2}
+				exp = newOrExpression(source, exp, exp2, currentScope)
 			default:
 				return nil, unexpectedTokenError(oToken, lexer.Multiply, lexer.Divide, lexer.Add, lexer.Subtract,
 					lexer.Equal, lexer.NotEqual, lexer.Less, lexer.LessOrEqual, lexer.Greater, lexer.GreaterOrEqual,
@@ -921,11 +899,7 @@ func (p *Parser) parseFunctionCallExpression(startToken lexer.Token, callSource 
 		parameters = append(parameters, exp)
 	}
 
-	return &FunctionCallExpression{
-		nodeSource: makeNodeSource(startToken),
-		CallSource: callSource,
-		Parameters: parameters,
-	}, nil
+	return newFunctionCallExpression(makeNodeSource(startToken), callSource, parameters), nil
 }
 
 func (p *Parser) getNextToken() lexer.Token {
@@ -1001,12 +975,12 @@ func (p *Parser) resolveUnknownTypes() error {
 			} else {
 				return errors.New("error resolving unknownIdentifierStatements: expected type of VariableDeclaration.TypeDeclaration.Type to be UnknownType")
 			}
-		} else if s, ok := stmt.(statementHavingVariableDeclaration); ok {
-			if d, ok := s.getVariableDeclaration().(*UnknownDeclaration); ok {
+		} else if s, ok := stmt.(StatementHavingVariableDeclaration); ok {
+			if d, ok := s.GetVariableDeclaration().(*UnknownDeclaration); ok {
 				id := d.Identifier
 				decl := d.Scope.SearchVariableDeclaration(id)
 				if decl != nil {
-					s.setVariableDeclaration(decl)
+					s.SetVariableDeclaration(decl)
 				} else {
 					return errors.Errorf("no variable found for identifier '%s' at line %d column %d",
 						id, d.UFSourceLine(), d.UFSourceColumn())

@@ -18,6 +18,7 @@ type Statement interface {
 
 type Expression interface {
 	Node
+	ResultingTypeDeclarations() ([]*TypeDeclaration, error)
 	exprNode()
 }
 

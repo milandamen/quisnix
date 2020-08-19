@@ -60,12 +60,17 @@ type FileScope struct {
 	BasicScope
 	// FIXME: Imported packages scope
 
+	// List of all top-level and sub-level type declarations in this file.
+	// FIXME: move to packages scope
+	AllTypeDeclarations []*TypeDeclaration
+
 	// Note every sub-scope declaration in this file scope so that declaration
 	// clashes can be found when a file-scope declaration is done after a sub-scope
 	// declaration might have been done already.
 	//
 	// Mapped by identifier and the value is the place where the same identifier was
 	// declared in a sub-scope.
+	// FIXME: move to packages scope
 	subScopeDeclarations map[string]nodeSource
 }
 
@@ -228,6 +233,7 @@ func (s *BasicScope) DeclareType(identifier string, declaration *TypeDeclaration
 				return // impossible situation as a scope of FileScopeType should always be an instance of FileScope.
 			}
 
+			fs.AllTypeDeclarations = append(fs.AllTypeDeclarations, declaration)
 			if _, ok := fs.subScopeDeclarations[identifier]; !ok {
 				fs.subScopeDeclarations[identifier] = declaration.nodeSource
 			}
@@ -411,6 +417,12 @@ func (b *BuiltInScope) GetTypeDeclaration(identifier string) *TypeDeclaration {
 				Type: BasicType{
 					DataType: StringDataType,
 					Name:     "String",
+				},
+			},
+			"Bool": {
+				Type: BasicType{
+					DataType: BoolDataType,
+					Name:     "Bool",
 				},
 			},
 		}

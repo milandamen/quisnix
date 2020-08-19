@@ -7,6 +7,7 @@ const (
 	IntDataType
 	ByteDataType
 	StringDataType
+	BoolDataType
 )
 
 type BasicType struct {
