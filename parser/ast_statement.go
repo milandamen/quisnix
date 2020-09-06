@@ -5,6 +5,10 @@ type StatementHavingVariableDeclaration interface {
 	SetVariableDeclaration(declaration Declaration)
 }
 
+type StatementHavingCondition interface {
+	GetCondition() Expression
+}
+
 type AssignStatement struct {
 	nodeSource
 	VariableDeclaration Declaration
@@ -97,6 +101,18 @@ func (s *DecrementStatement) GetVariableDeclaration() Declaration {
 
 func (s *DecrementStatement) SetVariableDeclaration(declaration Declaration) {
 	s.VariableDeclaration = declaration
+}
+
+func (s *IfStatement) GetCondition() Expression {
+	return s.Condition
+}
+
+func (s *ForStatement) GetCondition() Expression {
+	return s.Condition
+}
+
+func (s *WhileStatement) GetCondition() Expression {
+	return s.Condition
 }
 
 func (*AssignStatement) stmtNode()         {}

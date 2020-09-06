@@ -12,7 +12,7 @@ import (
 var _ = Describe("Parser", func() {
 	It("should parse an empty token list", func() {
 		p := parser.Parser{}
-		_, err := p.Parse([]lexer.Token{})
+		_, _, err := p.Parse([]lexer.Token{})
 		Expect(err).To(Succeed())
 	})
 	It("should parse a simple program", func() {
@@ -37,7 +37,7 @@ func test(asd Int) Int {
 		Expect(err).To(Succeed())
 		Expect(len(tokens)).To(Equal(55))
 
-		declarations, err := p.Parse(tokens)
+		declarations, _, err := p.Parse(tokens)
 		Expect(err).To(Succeed())
 		Expect(len(declarations)).To(Equal(1))
 

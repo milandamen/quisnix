@@ -16,7 +16,7 @@ type Parser struct {
 	unknownIdentifierStatements []Statement
 }
 
-func (p *Parser) Parse(tokens []lexer.Token) ([]Declaration, error) {
+func (p *Parser) Parse(tokens []lexer.Token) ([]Declaration, *FileScope, error) {
 	p.tokens = tokens
 	p.tokenPos = 0
 
@@ -27,7 +27,7 @@ func (p *Parser) Parse(tokens []lexer.Token) ([]Declaration, error) {
 	for true {
 		tln, err := p.parseTopLevel(fileScope)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if tln == nil {
 			break
@@ -37,10 +37,10 @@ func (p *Parser) Parse(tokens []lexer.Token) ([]Declaration, error) {
 	}
 
 	if err := p.resolveUnknownTypes(); err != nil {
-		return nil, errors.Wrap(err, "could not resolve unknown types")
+		return nil, nil, errors.Wrap(err, "could not resolve unknown types")
 	}
 
-	return topLevelDeclarations, nil
+	return topLevelDeclarations, fileScope, nil
 }
 
 func (p *Parser) parseTopLevel(currentScope *FileScope) (Declaration, error) {
@@ -335,7 +335,7 @@ func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
 	for true {
 		token := p.getNextToken()
 		if token == nil {
-			break
+			return nil, unexpectedEOF()
 		}
 
 		switch token.Type() {
@@ -392,13 +392,13 @@ func (p *Parser) parseStatements(currentScope Scope) ([]Statement, error) {
 			// Return must be the last statement in the block.
 			return append(statements, stmt), nil
 		case lexer.RightBrace:
-			break
+			return statements, nil
 		default:
 			return nil, unexpectedTokenError(token, lexer.Identifier, lexer.If, lexer.For, lexer.While, lexer.Var, lexer.Return, lexer.RightBrace)
 		}
 	}
 
-	return statements, nil
+	return nil, errors.New("unreachable code: Parser.parseStatements after loop")
 }
 
 func (p *Parser) parseIfStatement(startToken lexer.Token, currentScope Scope) (Statement, error) {
@@ -864,30 +864,20 @@ func (p *Parser) parseParenthesizedExpression(currentScope Scope) (Expression, e
 func (p *Parser) parseFunctionCallExpression(startToken lexer.Token, callSource Expression, currentScope Scope) (*FunctionCallExpression, error) {
 	parameters := make([]Expression, 0)
 	for true {
-		token := p.getNextToken()
-		if token == nil {
+		pToken := p.peekNextToken()
+		if pToken == nil {
 			return nil, unexpectedEOF()
 		}
 
-		if token.Type() == lexer.RightParenthesis {
+		if pToken.Type() == lexer.RightParenthesis {
+			p.getNextToken()
 			break
 		}
 
 		if len(parameters) > 0 {
-			if token.Type() != lexer.Comma {
-				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Comma)
-			}
-
-			token = p.getNextToken()
-			if token == nil {
-				return nil, unexpectedEOF()
-			}
-			if token.Type() != lexer.Identifier {
-				return nil, unexpectedTokenError(token, lexer.Identifier)
-			}
-		} else {
-			if token.Type() != lexer.Identifier {
-				return nil, unexpectedTokenError(token, lexer.RightParenthesis, lexer.Identifier)
+			p.getNextToken()
+			if pToken.Type() != lexer.Comma {
+				return nil, unexpectedTokenError(pToken, lexer.RightParenthesis, lexer.Comma)
 			}
 		}
 

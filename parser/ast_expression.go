@@ -114,28 +114,28 @@ func newBaseExpression(source nodeSource, d ...*TypeDeclaration) baseExpression 
 
 func newIntegerLiteralExpression(source nodeSource, value int, scope Scope) *IntegerLiteralExpression {
 	return &IntegerLiteralExpression{
-		baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Int")),
+		baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Int")),
 		Value:          value,
 	}
 }
 
 func newCharacterLiteralExpression(source nodeSource, value byte, scope Scope) *CharacterLiteralExpression {
 	return &CharacterLiteralExpression{
-		baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Byte")),
+		baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Byte")),
 		Value:          value,
 	}
 }
 
 func newStringLiteralExpression(source nodeSource, value string, scope Scope) *StringLiteralExpression {
 	return &StringLiteralExpression{
-		baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("String")),
+		baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("String")),
 		Value:          value,
 	}
 }
 
 func newBooleanLiteralExpression(source nodeSource, value bool, scope Scope) *BooleanLiteralExpression {
 	return &BooleanLiteralExpression{
-		baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+		baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 		Value:          value,
 	}
 }
@@ -191,7 +191,7 @@ func newEqualExpression(source nodeSource, left Expression, right Expression, sc
 	return &EqualExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -203,7 +203,7 @@ func newNotEqualExpression(source nodeSource, left Expression, right Expression,
 	return &NotEqualExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -215,7 +215,7 @@ func newLessExpression(source nodeSource, left Expression, right Expression, sco
 	return &LessExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -227,7 +227,7 @@ func newLessOrEqualExpression(source nodeSource, left Expression, right Expressi
 	return &LessOrEqualExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -239,7 +239,7 @@ func newGreaterExpression(source nodeSource, left Expression, right Expression, 
 	return &GreaterExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -251,7 +251,7 @@ func newGreaterOrEqualExpression(source nodeSource, left Expression, right Expre
 	return &GreaterOrEqualExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -263,7 +263,7 @@ func newAndExpression(source nodeSource, left Expression, right Expression, scop
 	return &AndExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -275,7 +275,7 @@ func newOrExpression(source nodeSource, left Expression, right Expression, scope
 	return &OrExpression{
 		dualInputBoolOutputExpression: dualInputBoolOutputExpression{
 			dualInputExpression: dualInputExpression{
-				baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+				baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 				Left:           left,
 				Right:          right,
 			},
@@ -285,7 +285,7 @@ func newOrExpression(source nodeSource, left Expression, right Expression, scope
 
 func newNotExpression(source nodeSource, exp Expression, scope Scope) *NotExpression {
 	return &NotExpression{
-		baseExpression: newBaseExpression(source, scope.GetTypeDeclaration("Bool")),
+		baseExpression: newBaseExpression(source, scope.SearchTypeDeclaration("Bool")),
 		Expression:     exp,
 	}
 }
@@ -372,7 +372,6 @@ func (e *FunctionCallExpression) ResultingTypeDeclarations() ([]*TypeDeclaration
 		}
 
 		givenType := givenTypeArr[0]
-
 		expectedType := funcParams[i].VariableDeclaration.TypeDeclaration
 		if givenType != expectedType {
 			return nil, errors.Errorf("parameter type mismatch: expected '%s' but was given '%d' on line %d column %d",
@@ -412,7 +411,7 @@ func (e dualInputExpression) ResultingTypeDeclarations() ([]*TypeDeclaration, er
 		return nil, err
 	}
 
-	if tds1[0] != tds2[1] {
+	if tds1[0] != tds2[0] {
 		return nil, errors.Errorf("cannot operate for different types, '%s' and '%s', on line %d column %d",
 			tds1[0].Type.TypeName(), tds2[0].Type.TypeName(), e.UFSourceLine(), e.UFSourceColumn())
 	}
