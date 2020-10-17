@@ -13,6 +13,7 @@ type TypeDeclaration struct {
 type FunctionDeclaration struct {
 	nodeSource
 	FunctionDefinition *FunctionDefinition
+	Name               string
 }
 
 type UnknownDeclaration struct {
