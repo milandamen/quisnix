@@ -23,6 +23,35 @@ var _ = Describe("Printer", func() {
 		pr := printer.LLVMPrinter{}
 
 		program := `
+func main() Int {
+	var a Int;
+	a = 1 + 2;
+	return a;
+}
+`
+		tokens, err := l.Parse(bytes.NewBufferString(program))
+		Expect(err).To(Succeed())
+		Expect(len(tokens)).To(Equal(20))
+
+		declarations, fileScope, err := p.Parse(tokens)
+		Expect(err).To(Succeed())
+		Expect(len(declarations)).To(Equal(1))
+
+		mainFunc, err := a.Analyze(declarations, fileScope)
+		Expect(err).To(Succeed())
+		Expect(mainFunc).ToNot(BeNil())
+
+		b := bytes.Buffer{}
+		Expect(pr.Print(&b, declarations)).To(Succeed())
+		fmt.Println(b.String())
+	})
+	It("should print correct LLVM IR", func() {
+		l := lexer.Lexer{}
+		p := parser.Parser{}
+		a := semanalyzer.SemAnalyzer{}
+		pr := printer.LLVMPrinter{}
+
+		program := `
 func main() {
 	var a Int;
 	a = 123;

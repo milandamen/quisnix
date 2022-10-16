@@ -109,25 +109,16 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 			if !ok2 {
 				return nil, errors.New("compiler error: statement having declaration is not a variable declaration")
 			}
-			varVal, inScope := scope[varDecl]
-			if !inScope {
-				var ok3 bool
-				varVal, ok3 = overwrittenVars[varDecl]
-				if !ok3 {
-					var ok4 bool
-					varVal, ok4 = outsideScopeVars[varDecl]
-					if !ok4 {
-						return nil, errors.New("compiler error: variable declaration not in scope")
-					}
-				}
+			varVal, inScope, err := p.getScopeVariableValue(varDecl, scope, overwrittenVars, outsideScopeVars)
+			if err != nil {
+				return nil, err
 			}
 
 			var newVal value.Value
 			var vals []value.Value
-			var err error
 			switch s := statement.(type) {
 			case *parser.AssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
 				if err != nil {
 					return nil, err
 				}
@@ -137,7 +128,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 
 				newVal = vals[0]
 			case *parser.AddAssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
 				if err != nil {
 					return nil, err
 				}
@@ -147,7 +138,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 
 				newVal = b.NewAdd(varVal, vals[0])
 			case *parser.SubtractAssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
 				if err != nil {
 					return nil, err
 				}
@@ -171,7 +162,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 			}
 		} else if stmt, ok := statement.(*parser.ReturnStatement); ok {
 			if len(stmt.ReturnExpressions) == 1 {
-				vals, err := p.getExpressionValues(b, stmt.ReturnExpressions[0])
+				vals, err := p.getExpressionValues(b, stmt.ReturnExpressions[0], scope, overwrittenVars, outsideScopeVars)
 				if err != nil {
 					return nil, err
 				}
@@ -183,6 +174,16 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 			} else {
 				return nil, errors.New("multiple return values not yet supported")
 			}
+		} else if stmt, ok := statement.(*parser.VariableDeclaration); ok {
+			if _, ok2 := stmt.TypeDeclaration.Type.(parser.BasicType); !ok2 {
+				return nil, errors.New("declaring a non-basic variable is not yet supported")
+			}
+
+			zeroVal, err := p.getZeroValue(stmt.TypeDeclaration.Type)
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot get zero value for variable")
+			}
+			scope[stmt] = zeroVal
 		} else {
 			return nil, errors.New("compiler error: unsupported statement")
 		}
@@ -191,8 +192,67 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 	return overwrittenVars, nil
 }
 
-func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Expression) ([]value.Value, error) {
-	return nil, nil // TODO implement
+func (p *LLVMPrinter) getScopeVariableValue(varDecl *parser.VariableDeclaration, scope, overwrittenVars,
+	outsideScopeVars map[*parser.VariableDeclaration]value.Value) (value.Value, bool, error) {
+
+	varVal, inScope := scope[varDecl]
+	if !inScope {
+		var ok3 bool
+		varVal, ok3 = overwrittenVars[varDecl]
+		if !ok3 {
+			var ok4 bool
+			varVal, ok4 = outsideScopeVars[varDecl]
+			if !ok4 {
+				return nil, false, errors.New("compiler error: variable declaration not in scope")
+			}
+		}
+	}
+
+	return varVal, inScope, nil
+}
+
+func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Expression, scope, overwrittenVars,
+	outsideScopeVars map[*parser.VariableDeclaration]value.Value) ([]value.Value, error) {
+
+	switch exp := expression.(type) {
+	case *parser.IntegerLiteralExpression:
+		val := constant.NewInt(types.I32, int64(exp.Value)) // TODO find out how to use other bit sizes.
+		return []value.Value{val}, nil
+	case *parser.IdentifierExpression:
+		val, _, err := p.getScopeVariableValue(exp.IdentifierDeclaration.(*parser.VariableDeclaration), scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, err
+		}
+		return []value.Value{val}, nil
+	case *parser.AddExpression:
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Left")
+		}
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Right")
+		}
+
+		add := b.NewAdd(val1[0], val2[0])
+		return []value.Value{add}, nil
+	default:
+		return nil, errors.New("compiler error: unsupported expression type")
+	}
+}
+
+func (p *LLVMPrinter) getZeroValue(typ parser.Type) (value.Value, error) {
+	switch t := typ.(type) {
+	case parser.BasicType:
+		switch t.DataType {
+		case parser.IntDataType:
+			return constant.NewInt(types.I32, 0), nil
+		default:
+			return nil, errors.Errorf("compiler error: basic data type '%d' is not implemented", t.DataType)
+		}
+	default:
+		return nil, errors.New("type is unsupported")
+	}
 }
 
 func getLLVMFunctionParams(parameters []*parser.Field, returnTypes []types.Type) ([]*ir.Param, error) {
