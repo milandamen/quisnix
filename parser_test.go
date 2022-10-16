@@ -5,7 +5,7 @@ import (
 
 	"github.com/milandamen/quisnix/lexer"
 	"github.com/milandamen/quisnix/parser"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

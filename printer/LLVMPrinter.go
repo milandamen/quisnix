@@ -83,9 +83,12 @@ func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration) e
 		return err
 	}
 
-	if err := p.addStatements(f, b, decl.FunctionDefinition.Statements, scope); err != nil {
+	overwrittenVars, err := p.addStatements(f, b, decl.FunctionDefinition.Statements, scope)
+	if err != nil {
 		return err
 	}
+
+	_ = overwrittenVars // TODO use PHI with overwritten vars
 
 	// When to allocate on the heap instead of the stack:
 	//  1. When the lifetime of the value exceeds the current function
@@ -97,6 +100,7 @@ func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration) e
 func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser.Statement, outsideScopeVars map[*parser.VariableDeclaration]value.Value) (map[*parser.VariableDeclaration]value.Value, error) {
 	overwrittenVars := make(map[*parser.VariableDeclaration]value.Value)
 	scope := make(map[*parser.VariableDeclaration]value.Value)
+	// TODO use PHI with overwritten vars
 
 	for _, statement := range statements {
 		if stmtHVarDecl, ok := statement.(parser.StatementHavingVariableDeclaration); ok {
@@ -188,7 +192,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 }
 
 func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Expression) ([]value.Value, error) {
-
+	return nil, nil // TODO implement
 }
 
 func getLLVMFunctionParams(parameters []*parser.Field, returnTypes []types.Type) ([]*ir.Param, error) {
