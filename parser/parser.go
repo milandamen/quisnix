@@ -789,12 +789,12 @@ func (p *Parser) parseExpression(prevOperatorPrecedence int, currentScope Scope)
 
 		oToken, ok := pToken.(lexer.OperatorToken)
 		if ok {
-			p.getNextToken()
 			precedence := oToken.OperatorPrecedence()
 			if precedence <= prevOperatorPrecedence {
 				break
 			}
 
+			p.getNextToken()
 			exp2, err := p.parseExpression(precedence, currentScope)
 			if err != nil {
 				return nil, err
