@@ -234,8 +234,32 @@ func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Express
 			return nil, errors.Wrap(err, "cannot 'add' with Right")
 		}
 
-		add := b.NewAdd(val1[0], val2[0])
+		add := b.NewAdd(val1[0], val2[0]) // TODO what if adding strings?
 		return []value.Value{add}, nil
+	case *parser.SubtractExpression:
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Left")
+		}
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Right")
+		}
+
+		sub := b.NewSub(val1[0], val2[0])
+		return []value.Value{sub}, nil
+	case *parser.MultiplyExpression:
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Left")
+		}
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Right")
+		}
+
+		mul := b.NewMul(val1[0], val2[0])
+		return []value.Value{mul}, nil
 	default:
 		return nil, errors.New("compiler error: unsupported expression type")
 	}
