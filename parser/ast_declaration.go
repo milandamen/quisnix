@@ -14,6 +14,7 @@ type FunctionDeclaration struct {
 	nodeSource
 	FunctionDefinition *FunctionDefinition
 	Name               string
+	MachineName        string
 }
 
 type UnknownDeclaration struct {
@@ -44,3 +45,14 @@ func (*FunctionDeclaration) declNode() {}
 func (*UnknownDeclaration) declNode()  {}
 
 func (*VariableDeclaration) stmtNode() {}
+
+func NewFunctionDeclaration(ns nodeSource, funcDef *FunctionDefinition, name string) *FunctionDeclaration {
+	return &FunctionDeclaration{
+		nodeSource:         ns,
+		FunctionDefinition: funcDef,
+		Name:               name,
+
+		// So it won't conflict with other functions we link into our binary. We should prefix with package path later.
+		MachineName: "qx_uf_" + name,
+	}
+}

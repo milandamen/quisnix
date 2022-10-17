@@ -25,8 +25,13 @@ var _ = Describe("Printer", func() {
 		program := `
 func main() Int {
 	var a Int;
-	a = 2 * 3 + 2 * 4;
+	a = 123;
+	a = test(a);
 	return a;
+}
+
+func test(asd Int) Int {
+	return 2 + asd;
 }
 `
 		tokens, err := l.Parse(bytes.NewBufferString(program))
@@ -35,7 +40,7 @@ func main() Int {
 
 		declarations, fileScope, err := p.Parse(tokens)
 		Expect(err).To(Succeed())
-		Expect(len(declarations)).To(Equal(1))
+		//Expect(len(declarations)).To(Equal(1))
 
 		mainFunc, err := a.Analyze(declarations, fileScope)
 		Expect(err).To(Succeed())

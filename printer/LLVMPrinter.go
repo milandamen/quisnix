@@ -21,15 +21,23 @@ type LLVMPrinter struct {
 
 func (p *LLVMPrinter) Print(w io.Writer, declarations []parser.Declaration) error {
 	p.module = ir.NewModule()
+	funcList := make(map[*parser.FunctionDeclaration]*ir.Func)
 	for _, decl := range declarations {
 		switch d := decl.(type) {
 		case *parser.FunctionDeclaration:
-			err := p.addFunctionDeclaration(d)
+			err := p.addFunctionDeclaration(d, funcList)
 			if err != nil {
 				return errors.Wrapf(err, "cannot print function '%s'", d.Name)
 			}
 		default:
 			return errors.New("unknown declaration type")
+		}
+	}
+
+	for funcDecl, f := range funcList {
+		err := p.addFunctionStatements(funcDecl, f, funcList)
+		if err != nil {
+			return errors.Wrapf(err, "cannot print function '%s'", funcDecl.Name)
 		}
 	}
 
@@ -51,7 +59,7 @@ func (p *LLVMPrinter) Print(w io.Writer, declarations []parser.Declaration) erro
 	return err
 }
 
-func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration) error {
+func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration, funcList map[*parser.FunctionDeclaration]*ir.Func) error {
 	retTypeFields := decl.FunctionDefinition.FunctionType.ReturnTypes
 	var retTypes []types.Type
 	for _, f := range retTypeFields {
@@ -75,15 +83,24 @@ func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration) e
 		return err
 	}
 
-	f := p.module.NewFunc(decl.Name, retType, params...)
+	machineName := decl.MachineName
+	if decl.Name == "main" {
+		machineName = "main" // TODO detect via annotation if this function should be main.
+	}
+	f := p.module.NewFunc(machineName, retType, params...)
+	funcList[decl] = f
+	return nil
+}
+
+func (p *LLVMPrinter) addFunctionStatements(decl *parser.FunctionDeclaration, f *ir.Func, funcList map[*parser.FunctionDeclaration]*ir.Func) error {
 	b := f.NewBlock("")
 
-	scope, err := getFuncVariableScope(decl.FunctionDefinition.FunctionType.Parameters, params)
+	variableScope, err := getFuncVariableScope(decl.FunctionDefinition.FunctionType.Parameters, f.Params)
 	if err != nil {
 		return err
 	}
 
-	overwrittenVars, err := p.addStatements(f, b, decl.FunctionDefinition.Statements, scope)
+	overwrittenVars, err := p.addStatements(b, decl.FunctionDefinition.Statements, variableScope, funcList)
 	if err != nil {
 		return err
 	}
@@ -97,7 +114,11 @@ func (p *LLVMPrinter) addFunctionDeclaration(decl *parser.FunctionDeclaration) e
 	return nil
 }
 
-func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser.Statement, outsideScopeVars map[*parser.VariableDeclaration]value.Value) (map[*parser.VariableDeclaration]value.Value, error) {
+func (p *LLVMPrinter) addStatements(b *ir.Block,
+	statements []parser.Statement,
+	outsideScopeVars map[*parser.VariableDeclaration]value.Value,
+	funcList map[*parser.FunctionDeclaration]*ir.Func) (map[*parser.VariableDeclaration]value.Value, error) {
+
 	overwrittenVars := make(map[*parser.VariableDeclaration]value.Value)
 	scope := make(map[*parser.VariableDeclaration]value.Value)
 	// TODO use PHI with overwritten vars
@@ -118,7 +139,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 			var vals []value.Value
 			switch s := statement.(type) {
 			case *parser.AssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars, funcList)
 				if err != nil {
 					return nil, err
 				}
@@ -128,7 +149,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 
 				newVal = vals[0]
 			case *parser.AddAssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars, funcList)
 				if err != nil {
 					return nil, err
 				}
@@ -138,7 +159,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 
 				newVal = b.NewAdd(varVal, vals[0])
 			case *parser.SubtractAssignStatement:
-				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars)
+				vals, err = p.getExpressionValues(b, s.Expression, scope, overwrittenVars, outsideScopeVars, funcList)
 				if err != nil {
 					return nil, err
 				}
@@ -162,7 +183,7 @@ func (p *LLVMPrinter) addStatements(f *ir.Func, b *ir.Block, statements []parser
 			}
 		} else if stmt, ok := statement.(*parser.ReturnStatement); ok {
 			if len(stmt.ReturnExpressions) == 1 {
-				vals, err := p.getExpressionValues(b, stmt.ReturnExpressions[0], scope, overwrittenVars, outsideScopeVars)
+				vals, err := p.getExpressionValues(b, stmt.ReturnExpressions[0], scope, overwrittenVars, outsideScopeVars, funcList)
 				if err != nil {
 					return nil, err
 				}
@@ -212,7 +233,7 @@ func (p *LLVMPrinter) getScopeVariableValue(varDecl *parser.VariableDeclaration,
 }
 
 func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Expression, scope, overwrittenVars,
-	outsideScopeVars map[*parser.VariableDeclaration]value.Value) ([]value.Value, error) {
+	outsideScopeVars map[*parser.VariableDeclaration]value.Value, funcList map[*parser.FunctionDeclaration]*ir.Func) ([]value.Value, error) {
 
 	switch exp := expression.(type) {
 	case *parser.IntegerLiteralExpression:
@@ -225,11 +246,11 @@ func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Express
 		}
 		return []value.Value{val}, nil
 	case *parser.AddExpression:
-		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Left")
 		}
-		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Right")
 		}
@@ -237,11 +258,11 @@ func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Express
 		add := b.NewAdd(val1[0], val2[0]) // TODO what if adding strings?
 		return []value.Value{add}, nil
 	case *parser.SubtractExpression:
-		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Left")
 		}
-		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Right")
 		}
@@ -249,17 +270,79 @@ func (p *LLVMPrinter) getExpressionValues(b *ir.Block, expression parser.Express
 		sub := b.NewSub(val1[0], val2[0])
 		return []value.Value{sub}, nil
 	case *parser.MultiplyExpression:
-		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars)
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Left")
 		}
-		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars)
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars, funcList)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot 'add' with Right")
 		}
 
 		mul := b.NewMul(val1[0], val2[0])
 		return []value.Value{mul}, nil
+	case *parser.DivideExpression:
+		val1, err := p.getExpressionValues(b, exp.Left, scope, overwrittenVars, outsideScopeVars, funcList)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Left")
+		}
+		val2, err := p.getExpressionValues(b, exp.Right, scope, overwrittenVars, outsideScopeVars, funcList)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot 'add' with Right")
+		}
+
+		mul := b.NewSDiv(val1[0], val2[0]) // TODO division by zero causes undefined behavior, so code must assert error
+		return []value.Value{mul}, nil
+	case *parser.FunctionCallExpression:
+		switch idExp := exp.CallSource.(type) {
+		case *parser.IdentifierExpression:
+			switch funcDecl := idExp.IdentifierDeclaration.(type) {
+			case *parser.FunctionDeclaration:
+				f, ok := funcList[funcDecl]
+				if !ok {
+					return nil, errors.New("compiler error: function not found for value of exp.CallSource.IdentifierDeclaration")
+				}
+
+				params := make([]value.Value, len(exp.Parameters))
+				for i, paramExp := range exp.Parameters {
+					val, err := p.getExpressionValues(b, paramExp, scope, overwrittenVars, outsideScopeVars, funcList)
+					if err != nil {
+						return nil, errors.Wrapf(err, "cannot parse parameter at index %d", i)
+					}
+					params[i] = val[0] // TODO support multiple return values
+				}
+
+				call := b.NewCall(f, params...)
+				returnTypes := funcDecl.FunctionDefinition.FunctionType.ReturnTypes
+				if len(returnTypes) == 0 {
+					call.Typ = types.Void
+				} else if len(returnTypes) == 1 {
+					switch t := returnTypes[0].VariableDeclaration.TypeDeclaration.Type.(type) {
+					case parser.BasicType:
+						switch t.DataType {
+						case parser.IntDataType:
+							call.Typ = types.I32
+						default:
+							return nil, errors.Errorf("compiler error: basic data type '%d' is not implemented", t.DataType)
+						}
+					default:
+						return nil, errors.New("compiler error: unsupported function return type")
+					}
+				} else {
+					return nil, errors.New("Returning multiple values from a function is not yet supported")
+				}
+
+				return []value.Value{call}, nil
+			case *parser.VariableDeclaration:
+				return nil, errors.New("calling a function in a variable is not yet supported")
+			default:
+				return nil, errors.New("compiler error: unsupported exp.CallSource.IdentifierDeclaration")
+			}
+		case *parser.FunctionCallExpression:
+			return nil, errors.New("calling a function resulting from the call of a function is not yet supported")
+		default:
+			return nil, errors.New("compiler error: unsupported exp.CallSource")
+		}
 	default:
 		return nil, errors.New("compiler error: unsupported expression type")
 	}

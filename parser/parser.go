@@ -87,12 +87,7 @@ func (p *Parser) parseTopLevelFunctionDeclaration(startToken lexer.Token, curren
 		return nil, err
 	}
 
-	decl := &FunctionDeclaration{
-		nodeSource:         ns,
-		FunctionDefinition: def,
-		Name:               id,
-	}
-
+	decl := NewFunctionDeclaration(ns, def, id)
 	currentScope.DeclareFunction(id, decl)
 	return decl, nil
 }
